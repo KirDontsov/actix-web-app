@@ -3,7 +3,6 @@ mod handlers;
 mod jwt_auth;
 mod model;
 mod response;
-
 mod utils;
 
 use actix_cors::Cors;
