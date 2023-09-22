@@ -46,7 +46,7 @@ impl FromRequest for JwtMiddleware {
 		if token.is_none() {
 			let json_error = ErrorResponse {
 				status,
-				message: String::from("You are not logged in, please provide token"),
+				message: String::from("Вы не вошли в систему, пожалуйста авторизуйтесь"),
 			};
 			return ready(Err(ErrorUnauthorized(json_error)));
 		}
@@ -60,7 +60,7 @@ impl FromRequest for JwtMiddleware {
 			Err(_) => {
 				let json_error = ErrorResponse {
 					status,
-					message: String::from("Invalid token"),
+					message: String::from("Ошибка авторизации"),
 				};
 				return ready(Err(ErrorUnauthorized(json_error)));
 			}
