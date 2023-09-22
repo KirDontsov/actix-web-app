@@ -6,6 +6,7 @@ use actix_web::{
 	cookie::{time::Duration as ActixWebDuration, Cookie},
 	post, web, HttpResponse, Responder,
 };
+use actix_web::cookie::SameSite;
 use argon2::{
 	password_hash::{PasswordHash, PasswordVerifier},
 	Argon2,
@@ -55,9 +56,11 @@ async fn login_user_handler(
 	.unwrap();
 
 	let cookie = Cookie::build("token", token.to_owned())
+		.same_site(SameSite::None)
 		.path("/")
 		.max_age(ActixWebDuration::new(60 * 60, 0))
 		.http_only(true)
+		.secure(true)
 		.finish();
 
 	HttpResponse::Ok()

@@ -41,10 +41,12 @@ impl FromRequest for JwtMiddleware {
 					.map(|h| h.to_str().unwrap().split_at(7).1.to_string())
 			});
 
+		let status = String::from("fail");
+
 		if token.is_none() {
 			let json_error = ErrorResponse {
-				status: "fail".to_string(),
-				message: "You are not logged in, please provide token".to_string(),
+				status,
+				message: String::from("You are not logged in, please provide token"),
 			};
 			return ready(Err(ErrorUnauthorized(json_error)));
 		}
@@ -57,8 +59,8 @@ impl FromRequest for JwtMiddleware {
 			Ok(c) => c.claims,
 			Err(_) => {
 				let json_error = ErrorResponse {
-					status: "fail".to_string(),
-					message: "Invalid token".to_string(),
+					status,
+					message: String::from("Invalid token"),
 				};
 				return ready(Err(ErrorUnauthorized(json_error)));
 			}

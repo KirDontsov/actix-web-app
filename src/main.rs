@@ -1,5 +1,5 @@
 mod config;
-mod handlers;
+mod controllers;
 mod jwt_auth;
 mod model;
 mod response;
@@ -7,7 +7,7 @@ mod utils;
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{http::header, web, App, HttpServer};
+use actix_web::{web, App, HttpServer};
 use config::Config;
 use dotenv::dotenv;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
@@ -45,22 +45,13 @@ async fn main() -> std::io::Result<()> {
 	println!("🚀 Server started successfully");
 
 	HttpServer::new(move || {
-		let cors = Cors::default()
-			.allowed_origin("http://localhost:3000")
-			.allowed_methods(vec!["GET", "POST"])
-			.allowed_headers(vec![
-				header::CONTENT_TYPE,
-				header::AUTHORIZATION,
-				header::ACCEPT,
-			])
-			.supports_credentials();
 		App::new()
 			.app_data(web::Data::new(AppState {
 				db: pool.clone(),
 				env: config.clone(),
 			}))
-			.configure(handlers::config)
-			.wrap(cors)
+			.configure(controllers::config)
+			.wrap(Cors::permissive())
 			.wrap(Logger::default())
 	})
 	.bind(("127.0.0.1", 8000))?

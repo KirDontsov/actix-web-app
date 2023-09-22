@@ -1,9 +1,9 @@
 use actix_web::web;
 
-use crate::handlers::auth::login_user_handler;
-use crate::handlers::auth::logout_user_handler;
-use crate::handlers::auth::register_user_handler;
-use crate::handlers::routes::get_me_handler;
+use crate::controllers::auth::login_user_handler;
+use crate::controllers::auth::logout_user_handler;
+use crate::controllers::auth::register_user_handler;
+use crate::controllers::routes::get_me_handler;
 
 pub fn config(conf: &mut web::ServiceConfig) {
 	let scope = web::scope("/api")
