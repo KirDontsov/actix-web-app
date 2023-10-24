@@ -36,3 +36,15 @@ pub struct LoginUserSchema {
 	pub email: String,
 	pub password: String,
 }
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct Quote {
+	pub id: uuid::Uuid,
+	pub text: Option<String>,
+	pub author: Option<String>,
+	#[serde(rename = "createdAt")]
+	pub created_at: Option<DateTime<Utc>>,
+	#[serde(rename = "updatedAt")]
+	pub updated_at: Option<DateTime<Utc>>,
+}
