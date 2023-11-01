@@ -4,10 +4,7 @@ use thirtyfour::prelude::*;
 use tokio::time::Duration;
 
 #[get("/parser/quotes")]
-async fn parser_handler(
-	data: web::Data<AppState>,
-	// _: jwt_auth::JwtMiddleware
-) -> impl Responder {
+async fn parser_handler(data: web::Data<AppState>, _: jwt_auth::JwtMiddleware) -> impl Responder {
 	let res = parser(data).await.unwrap();
 
 	let json_response = serde_json::json!({

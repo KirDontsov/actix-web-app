@@ -1,6 +1,6 @@
 pub mod auth;
-pub mod routes;
-
 pub mod config;
+pub mod routes;
+pub mod user;
 
 pub use self::config::config;
