@@ -6,7 +6,7 @@ use actix_web::{
 use serde_json::json;
 
 #[get("/auth/logout")]
-async fn logout_user_handler(_: jwt_auth::JwtMiddleware) -> impl Responder {
+async fn logout_handler(_: jwt_auth::JwtMiddleware) -> impl Responder {
 	let cookie = Cookie::build("token", "")
 		.path("/")
 		.max_age(ActixWebDuration::new(-1, 0))

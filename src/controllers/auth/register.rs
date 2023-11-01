@@ -5,14 +5,14 @@ use argon2::{
 };
 use sqlx::Row;
 
+use crate::utils::filter_user_record;
 use crate::{
 	model::{RegisterUserSchema, User},
 	AppState,
 };
-use crate::utils::filter_user_record;
 
 #[post("/auth/register")]
-async fn register_user_handler(
+async fn register_handler(
 	body: web::Json<RegisterUserSchema>,
 	data: web::Data<AppState>,
 ) -> impl Responder {

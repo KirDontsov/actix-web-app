@@ -2,11 +2,11 @@ use crate::{
 	model::{LoginUserSchema, TokenClaims, User},
 	AppState,
 };
+use actix_web::cookie::SameSite;
 use actix_web::{
 	cookie::{time::Duration as ActixWebDuration, Cookie},
 	post, web, HttpResponse, Responder,
 };
-use actix_web::cookie::SameSite;
 use argon2::{
 	password_hash::{PasswordHash, PasswordVerifier},
 	Argon2,
@@ -16,7 +16,7 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use serde_json::json;
 
 #[post("/auth/login")]
-async fn login_user_handler(
+async fn login_handler(
 	body: web::Json<LoginUserSchema>,
 	data: web::Data<AppState>,
 ) -> impl Responder {
@@ -33,8 +33,9 @@ async fn login_user_handler(
 	});
 
 	if !is_valid {
-		return HttpResponse::BadRequest()
-			.json(json!({"status": "fail", "message": "Неправильный адрес электронной почты или пароль"}));
+		return HttpResponse::BadRequest().json(
+			json!({"status": "fail", "message": "Неправильный адрес электронной почты или пароль"}),
+		);
 	}
 
 	let user = query_result.unwrap();
