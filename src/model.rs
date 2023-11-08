@@ -48,3 +48,14 @@ pub struct Quote {
 	#[serde(rename = "updatedAt")]
 	pub updated_at: Option<DateTime<Utc>>,
 }
+
+#[derive(Deserialize, Debug)]
+pub struct FilterOptions {
+	pub page: Option<usize>,
+	pub limit: Option<usize>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UsersCount {
+	pub count: Option<i64>,
+}

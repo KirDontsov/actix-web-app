@@ -27,7 +27,7 @@ async fn parser(data: web::Data<AppState>) -> WebDriverResult<Vec<(String, Strin
 
 	let mut quote_elems: Vec<WebElement> = Vec::new();
 
-	for _n in 1..10 {
+	for _n in 1..1_00 {
 		quote_elems = driver.find_all(By::Css(".quote")).await?;
 		let last = quote_elems.last().unwrap();
 		last.scroll_into_view().await?;
