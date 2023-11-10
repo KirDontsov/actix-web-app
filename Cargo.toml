@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 actix-cors = "0.6.4"
 actix-web = "4.4.0"
+actix-web-grants = "3.0.2"
 argon2 = "0.5.2"
 chrono = { version = "0.4.30", features = ["serde"] }
 dotenv = "0.15.0"

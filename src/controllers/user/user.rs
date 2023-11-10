@@ -9,9 +9,11 @@ use actix_web::{
 	web::{self, Path},
 	HttpResponse, Responder,
 };
+use actix_web_grants::proc_macro::has_any_role;
 use serde_json::json;
 use uuid::Uuid;
 
+use crate::controllers;
 use crate::utils::filter_user_record;
 
 #[get("/user/{id}")]
@@ -38,6 +40,7 @@ async fn get_user_handler(
 }
 
 #[get("/users")]
+#[has_any_role("controllers::auth::Role::Admin", type = "controllers::auth::Role")]
 async fn get_users_handler(
 	opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
