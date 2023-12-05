@@ -5,7 +5,7 @@ use tokio::time::Duration;
 
 #[get("/parser/quotes")]
 async fn parser_handler(data: web::Data<AppState>, _: jwt_auth::JwtMiddleware) -> impl Responder {
-	let res = parser(data).await.unwrap();
+	let _ = parser(data).await;
 
 	let json_response = serde_json::json!({
 		"status":  "success",
@@ -17,7 +17,7 @@ async fn parser_handler(data: web::Data<AppState>, _: jwt_auth::JwtMiddleware) -
 	HttpResponse::Ok().json(json_response)
 }
 
-async fn parser(data: web::Data<AppState>) -> WebDriverResult<Vec<(String, String)>> {
+async fn parser(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let caps = DesiredCapabilities::chrome();
 	let driver = WebDriver::new("http://localhost:9515", caps).await?;
 
@@ -27,14 +27,16 @@ async fn parser(data: web::Data<AppState>) -> WebDriverResult<Vec<(String, Strin
 
 	let mut quote_elems: Vec<WebElement> = Vec::new();
 
-	for _n in 1..1_00 {
-		quote_elems = driver.find_all(By::Css(".quote")).await?;
+	for _n in 1..1_0 {
+		quote_elems = driver.find_all(By::XPath("//div[contains(@data-scroll, \"true\")]/div[contains(@style, \"width: 352px\")]/div[2]/div/div")).await?;
 		let last = quote_elems.last().unwrap();
 		last.scroll_into_view().await?;
 		tokio::time::sleep(Duration::from_secs(1)).await;
 	}
 
 	let mut quotes = Vec::new();
+
+	dbg!(&quotes);
 
 	for quote_elem in quote_elems {
 		let quote_text = quote_elem.find(By::Css(".text")).await?.text().await?;
@@ -43,20 +45,28 @@ async fn parser(data: web::Data<AppState>) -> WebDriverResult<Vec<(String, Strin
 		quotes.push(quote);
 	}
 
-	for quote in &quotes {
-		let _ = sqlx::query_as!(
-			Quote,
-			"INSERT INTO quotes (text, author) VALUES ($1, $2) RETURNING *",
-			quote.0.to_string(),
-			quote.1.to_string(),
-		)
-		.fetch_one(&data.db)
-		.await;
+	// for quote in &quotes {
+	// 	let _ = sqlx::query_as!(
+	// 		Quote,
+	// 		"INSERT INTO quotes (text, author) VALUES ($1, $2) RETURNING *",
+	// 		quote.0.to_string(),
+	// 		quote.1.to_string(),
+	// 	)
+	// 	.fetch_one(&data.db)
+	// 	.await;
 
+	// 	println!("{} -- {}", quote.0, quote.1)
+	// }
+
+	// driver.quit().await?;
+
+	// Ok(())
+
+	for quote in quotes {
 		println!("{} -- {}", quote.0, quote.1)
 	}
 
 	driver.quit().await?;
 
-	Ok(quotes.clone())
+	Ok(())
 }

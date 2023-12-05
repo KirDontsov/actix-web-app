@@ -6,40 +6,14 @@ mod response;
 mod utils;
 
 use actix_cors::Cors;
-use actix_web::dev::ServiceRequest;
 use actix_web::middleware::Logger;
-use actix_web::{http, HttpMessage};
-use actix_web::{http::header, web, App, Error, HttpServer};
-use actix_web_grants::{proc_macro::has_any_role, GrantsMiddleware};
+use actix_web::{http::header, web, App, HttpServer};
+use actix_web_grants::GrantsMiddleware;
 use config::Config;
-use controllers::auth::Role;
 use dotenv::dotenv;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 
-use core::fmt;
-use std::future::{ready, Ready};
-
-use actix_web::error::ErrorUnauthorized;
-use actix_web::{dev::Payload, Error as ActixWebError};
-use actix_web::{FromRequest, HttpRequest};
-use jsonwebtoken::{decode, DecodingKey, Validation};
-use serde::Serialize;
-
-use crate::model::{TokenClaims, User};
-
 use crate::controllers::auth::extract;
-
-#[derive(Debug, Serialize)]
-struct ErrorResponse {
-	status: String,
-	message: String,
-}
-
-impl fmt::Display for ErrorResponse {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "{}", serde_json::to_string(&self).unwrap())
-	}
-}
 
 pub struct AppState {
 	db: Pool<Postgres>,
