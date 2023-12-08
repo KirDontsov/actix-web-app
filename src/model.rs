@@ -37,6 +37,16 @@ pub struct LoginUserSchema {
 	pub password: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateUserSchema {
+	pub name: String,
+	pub email: String,
+	pub role: String,
+	pub verified: bool,
+	// #[serde(rename = "updatedAt")]
+	// pub updated_at: String,
+}
+
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct Quote {

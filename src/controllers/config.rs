@@ -12,6 +12,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(parser_handler)
 		.service(get_user_handler)
 		.service(get_users_handler)
+		.service(update_user_handler)
 		.service(get_me_handler);
 
 	conf.service(scope);
