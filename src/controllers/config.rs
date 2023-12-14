@@ -1,6 +1,7 @@
 use actix_web::web;
 
 use crate::controllers::auth::*;
+use crate::controllers::quote::*;
 use crate::controllers::routes::*;
 use crate::controllers::user::*;
 
@@ -13,6 +14,8 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_user_handler)
 		.service(get_users_handler)
 		.service(update_user_handler)
+		.service(get_quote_handler)
+		.service(get_quotes_handler)
 		.service(get_me_handler);
 
 	conf.service(scope);

@@ -1,8 +1,7 @@
 mod config;
 mod controllers;
 mod jwt_auth;
-mod model;
-mod response;
+mod models;
 mod utils;
 
 use actix_cors::Cors;
@@ -48,15 +47,6 @@ async fn main() -> std::io::Result<()> {
 	println!("🚀 Server started successfully");
 
 	HttpServer::new(move || {
-		// let cors = Cors::default()
-		// 	.allowed_origin("http://localhost:3000")
-		// 	.allowed_methods(vec!["GET", "POST"])
-		// 	.allowed_headers(vec![
-		// 		header::CONTENT_TYPE,
-		// 		header::AUTHORIZATION,
-		// 		header::ACCEPT,
-		// 	])
-		// 	.supports_credentials();
 		let auth = GrantsMiddleware::with_extractor(extract);
 		App::new()
 			.app_data(web::Data::new(AppState {

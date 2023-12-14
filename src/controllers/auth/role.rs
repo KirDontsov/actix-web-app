@@ -3,7 +3,7 @@ use actix_web::{http, web, Error, HttpMessage};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
-use crate::model::{TokenClaims, User};
+use crate::models::{TokenClaims, User};
 use crate::AppState;
 
 #[derive(PartialEq, Clone, Debug, Deserialize, Serialize)]

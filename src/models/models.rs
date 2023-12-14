@@ -62,6 +62,11 @@ pub struct Quote {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct QuotesCount {
+	pub count: Option<i64>,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct FilterOptions {
 	pub page: Option<usize>,
 	pub limit: Option<usize>,

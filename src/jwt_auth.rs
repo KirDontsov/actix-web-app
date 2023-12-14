@@ -7,7 +7,7 @@ use actix_web::{http, web, FromRequest, HttpMessage, HttpRequest};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::Serialize;
 
-use crate::model::TokenClaims;
+use crate::models::TokenClaims;
 use crate::AppState;
 
 #[derive(Debug, Serialize)]

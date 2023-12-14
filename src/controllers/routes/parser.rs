@@ -1,4 +1,4 @@
-use crate::{jwt_auth, model::Quote, AppState};
+use crate::{jwt_auth, models::Quote, AppState};
 use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
 use tokio::time::Duration;

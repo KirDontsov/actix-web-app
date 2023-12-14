@@ -1,7 +1,6 @@
 use crate::{
 	jwt_auth,
-	model::{FilterOptions, UpdateUserSchema, User, UsersCount},
-	response::FilteredUser,
+	models::{FilterOptions, FilteredUser, UpdateUserSchema, User, UsersCount},
 	AppState,
 };
 use actix_web::{
@@ -104,15 +103,17 @@ async fn update_user_handler(
 	let email = &opts.email;
 	let role = &opts.role;
 	let verified = &opts.verified;
+	let favourite = &opts.favourite;
 	// let updated_at = Utc::now();
 
 	let user = sqlx::query_as!(
 		User,
-		r#"UPDATE users SET name = $1, email = $2, role = $3, verified = $4 WHERE id = $5 RETURNING *"#,
+		r#"UPDATE users SET name = $1, email = $2, role = $3, verified = $4, favourite = $5 WHERE id = $6 RETURNING *"#,
 		name.to_string(),
 		email.to_string(),
 		role.to_string(),
 		verified,
+		favourite,
 		// updated_at,
 		id
 	)

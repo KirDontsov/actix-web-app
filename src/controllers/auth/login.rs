@@ -1,5 +1,5 @@
 use crate::{
-	model::{LoginUserSchema, TokenClaims, User},
+	models::{LoginUserSchema, TokenClaims, User},
 	AppState,
 };
 use actix_web::cookie::SameSite;

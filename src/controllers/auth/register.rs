@@ -7,7 +7,7 @@ use sqlx::Row;
 
 use crate::utils::filter_user_record;
 use crate::{
-	model::{RegisterUserSchema, User},
+	models::{RegisterUserSchema, User},
 	AppState,
 };
 

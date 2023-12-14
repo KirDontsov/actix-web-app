@@ -1,4 +1,4 @@
-use crate::{jwt_auth, model::User, AppState};
+use crate::{jwt_auth, models::User, AppState};
 use actix_web::{get, web, HttpMessage, HttpRequest, HttpResponse, Responder};
 
 use crate::utils::filter_user_record;
