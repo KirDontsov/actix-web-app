@@ -28,7 +28,7 @@ async fn parser(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let mut quote_elems: Vec<WebElement> = Vec::new();
 
 	for _n in 1..1_0 {
-		quote_elems = driver.find_all(By::XPath("//div[contains(@data-scroll, \"true\")]/div[contains(@style, \"width: 352px\")]/div[2]/div/div")).await?;
+		quote_elems = driver.find_all(By::Css(".quote")).await?;
 		let last = quote_elems.last().unwrap();
 		last.scroll_into_view().await?;
 		tokio::time::sleep(Duration::from_secs(1)).await;
@@ -45,28 +45,28 @@ async fn parser(data: web::Data<AppState>) -> WebDriverResult<()> {
 		quotes.push(quote);
 	}
 
-	// for quote in &quotes {
-	// 	let _ = sqlx::query_as!(
-	// 		Quote,
-	// 		"INSERT INTO quotes (text, author) VALUES ($1, $2) RETURNING *",
-	// 		quote.0.to_string(),
-	// 		quote.1.to_string(),
-	// 	)
-	// 	.fetch_one(&data.db)
-	// 	.await;
+	for quote in &quotes {
+		let _ = sqlx::query_as!(
+			Quote,
+			"INSERT INTO quotes (text, author) VALUES ($1, $2) RETURNING *",
+			quote.0.to_string(),
+			quote.1.to_string(),
+		)
+		.fetch_one(&data.db)
+		.await;
 
-	// 	println!("{} -- {}", quote.0, quote.1)
-	// }
-
-	// driver.quit().await?;
-
-	// Ok(())
-
-	for quote in quotes {
 		println!("{} -- {}", quote.0, quote.1)
 	}
 
 	driver.quit().await?;
 
 	Ok(())
+
+	// for quote in quotes {
+	// 	println!("{} -- {}", quote.0, quote.1)
+	// }
+
+	// driver.quit().await?;
+
+	// Ok(())
 }
