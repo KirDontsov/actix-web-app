@@ -4,23 +4,20 @@ use crate::{
 	AppState,
 };
 use actix_web::{
-	delete, get, post, put,
+	get, post,
 	web::{self, Path},
 	HttpResponse, Responder,
 };
-use actix_web_grants::proc_macro::has_any_role;
-use chrono::Utc;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::controllers::auth::Role;
 use crate::utils::filter_quote_record;
 
 #[get("/quotes")]
 async fn get_quotes_handler(
 	opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
-	// _: jwt_auth::JwtMiddleware,
+	_: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
