@@ -1,10 +1,10 @@
 use crate::{
 	jwt_auth,
-	models::{FilterOptions, FilteredQuote, Quote, QuotesCount},
+	models::{AddQuoteSchema, FilterOptions, FilteredQuote, Quote, QuotesCount},
 	AppState,
 };
 use actix_web::{
-	delete, get, put,
+	delete, get, post, put,
 	web::{self, Path},
 	HttpResponse, Responder,
 };
@@ -20,7 +20,7 @@ use crate::utils::filter_quote_record;
 async fn get_quotes_handler(
 	opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
-	_: jwt_auth::JwtMiddleware,
+	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
@@ -86,4 +86,33 @@ async fn get_quote_handler(
 	});
 
 	HttpResponse::Ok().json(json_response)
+}
+
+#[post("/quote")]
+async fn add_quote_handler(
+	body: web::Json<AddQuoteSchema>,
+	data: web::Data<AppState>,
+) -> impl Responder {
+	let query_result = sqlx::query_as!(
+		Quote,
+		"INSERT INTO quotes (text,author) VALUES ($1, $2) RETURNING *",
+		body.text.to_string().to_lowercase(),
+		body.author.to_string().to_lowercase(),
+	)
+	.fetch_one(&data.db)
+	.await;
+
+	match query_result {
+		Ok(quote) => {
+			let quote_response = serde_json::json!({"status": "success","data": serde_json::json!({
+				"quote": filter_quote_record(&quote)
+			})});
+
+			return HttpResponse::Ok().json(quote_response);
+		}
+		Err(e) => {
+			return HttpResponse::InternalServerError()
+				.json(serde_json::json!({"status": "error","message": format!("{:?}", e)}));
+		}
+	}
 }

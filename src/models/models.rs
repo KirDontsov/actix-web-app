@@ -72,6 +72,12 @@ pub struct FilterOptions {
 	pub limit: Option<usize>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct AddQuoteSchema {
+	pub text: String,
+	pub author: String,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct UsersCount {
 	pub count: Option<i64>,

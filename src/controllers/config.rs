@@ -16,6 +16,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(update_user_handler)
 		.service(get_quote_handler)
 		.service(get_quotes_handler)
+		.service(add_quote_handler)
 		.service(get_me_handler);
 
 	conf.service(scope);
