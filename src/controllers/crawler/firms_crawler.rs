@@ -39,54 +39,57 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let mut firm_id_xpath;
 
 		for (i, firm_elem) in firms_elem.clone().into_iter().enumerate() {
-			if i > 0 && j != 0 {
-				name_xpath = [
+			if i == 2 {
+				continue;
+			}
+			name_xpath = [
 			"//body/div/div/div/div/div/div[2]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div[contains(@style, 'width: 352px')]/div[2]/div/div[",
-			format!("{}", i).as_str(),
+			format!("{}", i + 1).as_str(),
 			"]/div/div/a/span/span[1]",
 			]
 			.concat()
 			.to_string();
 
-				firm_id_xpath = [
+			firm_id_xpath = [
 			"//body/div/div/div/div/div/div[2]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div[contains(@style, 'width: 352px')]/div[2]/div/div[",
-			format!("{}", i).as_str(),
+			format!("{}", i + 1).as_str(),
 			"]/div/div/a",
 			]
 			.concat()
 			.to_string();
 
-				let firm_name = firm_elem
-					.find(By::XPath(&name_xpath))
-					.await?
-					.inner_html()
-					.await?;
+			let firm_name = firm_elem
+				.query(By::XPath(&name_xpath))
+				.first()
+				.await?
+				.inner_html()
+				.await?;
 
-				let Some(firm_id) = firm_elem
-					.find(By::XPath(&firm_id_xpath))
-					.await?
-					.attr("href")
-					.await?
-				else {
-					panic!("no href!");
-				};
+			let Some(firm_id) = firm_elem
+				.query(By::XPath(&firm_id_xpath))
+				.first()
+				.await?
+				.attr("href")
+				.await?
+			else {
+				panic!("no href!");
+			};
 
-				// TODO: попробовать заменить на regexp
-				let url_part_one = *firm_id
-					.split("/spb/firm/")
-					.collect::<Vec<&str>>()
-					.get_mut(1)
-					.unwrap_or(&mut "-?");
+			// TODO: попробовать заменить на regexp
+			let url_part_one = *firm_id
+				.split("/spb/firm/")
+				.collect::<Vec<&str>>()
+				.get_mut(1)
+				.unwrap_or(&mut "-?");
 
-				let res = *url_part_one
-					.split("?")
-					.collect::<Vec<&str>>()
-					.get(0)
-					.unwrap_or(&mut "");
+			let res = *url_part_one
+				.split("?")
+				.collect::<Vec<&str>>()
+				.get(0)
+				.unwrap_or(&mut "");
 
-				let firm = (firm_name, res.to_string());
-				firms.push(firm);
-			}
+			let firm = (firm_name, res.to_string());
+			firms.push(firm);
 		}
 
 		// запись в бд

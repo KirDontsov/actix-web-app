@@ -13,6 +13,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(logout_handler)
 		.service(firms_crawler_handler)
 		.service(firms_info_crawler_handler)
+		.service(firms_reviews_crawler_handler)
 		.service(get_user_handler)
 		.service(get_users_handler)
 		.service(update_user_handler)

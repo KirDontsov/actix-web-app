@@ -15,7 +15,7 @@ async fn firms_info_crawler_handler(
 	let _ = crawler(data).await;
 
 	let json_response = serde_json::json!({
-		"status":  "success",
+		"status":"success",
 	});
 
 	HttpResponse::Ok().json(json_response)
@@ -58,63 +58,90 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		let mut firms: Vec<SaveFirm> = Vec::new();
 
-		driver.goto(format!("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/30.384797%2C59.980609", &firm.two_gis_firm_id.clone().unwrap())).await?;
+		driver.goto(format!("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}", &firm.two_gis_firm_id.clone().unwrap())).await?;
 
 		tokio::time::sleep(Duration::from_secs(5)).await;
-
-		let address_xpath;
-		let mut phone_xpath;
-		let mut site_xpath;
-		// let mut email_xpath;
-
-		address_xpath = "//body/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div/div";
-		// attribute
-		phone_xpath = "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[1]/div/div/div[3]/div[2]/div/a";
-		site_xpath = "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[1]/div/div/div[4]";
-		// email_xpath = "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div/div/div[6]/div[2]/div/a";
 
 		// не запрашиваем информацию о закрытом
 		let err_block = driver
 			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div/div"))
-			.with_text("Филиал временно не работает").exists()
+			.first()
+			.await?
+			.inner_html()
 			.await?;
 
-		if err_block {
+		if err_block.contains("Филиал временно не работает") {
 			continue;
 		}
 
-		let blocks = driver.find_all(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[1]/div")).await?;
+		let info_blocks_xpath;
+		let mut address_xpath;
+		let mut phone_xpath;
+		let mut site_xpath;
+		// let mut email_xpath;
 
-		let mut target_block = blocks[0].clone();
-		for block in blocks {
-			if block.rect().await?.height >= target_block.rect().await?.height {
-				target_block = block.clone();
+		// находим блоки среди которых есть блок с блоками с инфой
+		let blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div")).all().await?;
+		// находим номер блока с блоками с инфой
+		let mut info_block_number = 1;
+		for (i, block) in blocks.clone().into_iter().enumerate() {
+			if block.rect().await?.height >= blocks[0].rect().await?.height
+				&& (block.inner_html().await?.contains("Показать вход")
+					|| block.inner_html().await?.contains("Показать на карте"))
+			{
+				info_block_number = i + 1;
 			}
 		}
+		info_blocks_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div", info_block_number);
+		dbg!(&info_block_number);
+		dbg!(&info_blocks_xpath);
 
-		let info_blocks = driver.find_all(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[1]/div/div/div")).await?;
-		let mut info_blocks_count = 0;
+		// находим блоки с инфой
+		let info_blocks = driver.query(By::XPath(&info_blocks_xpath)).all().await?;
+		// есть ли доп блок "Уже воспользовались услугами?"
+		let extra_block = driver
+			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[1]"))
+			.first()
+			.await?
+			.inner_html()
+			.await?;
 
-		for (i, _) in info_blocks.into_iter().enumerate() {
-			info_blocks_count = i;
+		// без доп блока
+		address_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]/div/div[1]", info_block_number, 1);
+		phone_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]/div[last()]/div/a", info_block_number, 3);
+		site_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]", info_block_number, 4);
+		// email_xpath = "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div/div/div[6]/div[2]/div/a";
+
+		// с доп блоком
+		if extra_block.contains("Уже воспользовались услугами?") {
+			address_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]/div/div[1]/div[2]/div[1]", info_block_number, 2);
+			phone_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]/div[last()]/div/a", info_block_number, 4);
+			site_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]", info_block_number, 5);
+		}
+		dbg!(extra_block.contains("Показать телефон") || extra_block.contains("Показать телефоны"));
+		// если нет телефона и сайта
+		if !(extra_block.contains("Показать телефон") || extra_block.contains("Показать телефоны"))
+		{
+			phone_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[last()]", info_block_number);
+		}
+		// если нет сайта
+		if info_blocks.len() <= 3 {
+			site_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[last()]", info_block_number);
 		}
 
-		if info_blocks_count <= 3 {
-			site_xpath = "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[1]/div/div/div[last()]";
-		}
+		dbg!(&info_blocks.len());
+		dbg!(&address_xpath);
+		dbg!(&phone_xpath);
+		dbg!(&site_xpath);
 
-		if info_blocks_count <= 3 {
-			phone_xpath = "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[1]/div/div/div[last()]/div[last()]";
-		}
-
-		let firm_address = target_block
+		let firm_address = info_blocks[0]
 			.query(By::XPath(&address_xpath))
 			.first()
 			.await?
 			.text()
 			.await?;
 
-		let firm_phone = match target_block
+		let firm_phone = match info_blocks[0]
 			.query(By::XPath(&phone_xpath))
 			.first()
 			.await?
@@ -125,7 +152,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			_ => "-".to_string(),
 		};
 
-		let firm_site = target_block
+		let firm_site = info_blocks[0]
 			.query(By::XPath(&site_xpath))
 			.first()
 			.await?
@@ -165,6 +192,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 			dbg!(&firm);
 		}
+		println!("№ {}", &j + 1);
 	}
 
 	driver.quit().await?;
