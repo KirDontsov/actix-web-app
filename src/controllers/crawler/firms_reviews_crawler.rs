@@ -1,6 +1,6 @@
 use crate::{
 	jwt_auth,
-	models::{Category, Firm, FirmsCount, Review, SaveReview, TwoGisFirm},
+	models::{Firm, FirmsCount, Review, SaveReview},
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
@@ -25,9 +25,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let caps = DesiredCapabilities::chrome();
 	let driver = WebDriver::new("http://localhost:9515", caps).await?;
 
-	let count_query_result = sqlx::query_as!(FirmsCount, "SELECT count(*) AS count FROM firms")
-		.fetch_one(&data.db)
-		.await;
+	let count_query_result =
+		sqlx::query_as!(FirmsCount, "SELECT count(*) AS count FROM firms_copy")
+			.fetch_one(&data.db)
+			.await;
 
 	if count_query_result.is_err() {
 		println!("Что-то пошло не так во время подсчета фирм");
@@ -35,12 +36,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	let firms_count = count_query_result.unwrap().count.unwrap();
 
-	dbg!(&firms_count);
-
 	for j in 0..=firms_count {
 		let firm = sqlx::query_as!(
 			Firm,
-			"SELECT * FROM firms ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
+			"SELECT * FROM firms_copy ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
 			j
 		)
 		.fetch_one(&data.db)
@@ -53,98 +52,95 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		tokio::time::sleep(Duration::from_secs(5)).await;
 
-		// не запрашиваем информацию если нет отзывов
-		let err_block = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div"))
-			.with_text("Нет отзывов").exists()
-			.await?;
-
-		if err_block {
-			continue;
-		}
-
-		let mut block_number = 3;
-		let mut not_confirmed;
 		// let mut not_confirmed_xpath;
 		let mut author_xpath;
 		let mut date_xpath;
 		let mut text_xpath;
 
-		let initial_blocks = driver.find_all(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div")).await?;
+		let mut blocks: Vec<WebElement> = Vec::new();
 
-		// проверяем дополнительный блок в начале перед проходм, чтобы не проверять на каждом шаге
-		let extra_block = initial_blocks[3]
+		let no_reviews = driver
 			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]"))
 			.first()
 			.await?
 			.inner_html()
 			.await?;
 
-		if extra_block.contains("Люди говорят") {
-			block_number = 4;
+		if no_reviews.contains("Нет отзывов") {
+			continue;
 		}
 
-		not_confirmed = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]"))
+		// кол-во отзывов
+		let reviews_count = driver
+			.query(By::XPath("//*[contains(text(),'Отзывы')]/span"))
 			.first()
 			.await?
 			.inner_html()
-			.await?;
+			.await?
+			.parse::<f32>()
+			.unwrap();
 
-		dbg!(&not_confirmed);
+		let edge: i32 = ((if reviews_count > 500.0 {
+			500.0
+		} else {
+			reviews_count
+		}) / 12.0)
+			.ceil() as i32;
 
-		// TODO: нужно считать кол-во отзывов / на 13 и по этому кол-ву скролить в цикле
-		let last = initial_blocks.last().unwrap();
-		last.scroll_into_view().await?;
-
-		tokio::time::sleep(Duration::from_secs(1)).await;
-
-		let blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div")).all().await?;
-		dbg!(&blocks.len());
+		// скролим в цикле
+		for _ in 0..=edge {
+			blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div")).all().await?;
+			let last = blocks.last().unwrap();
+			last.scroll_into_view().await?;
+			tokio::time::sleep(Duration::from_secs(1)).await;
+		}
 
 		for (i, block) in blocks.clone().into_iter().enumerate() {
-			if i >= block_number {
-				let count = i + 1;
+			let count = i + 1;
+			let block_content = block.inner_html().await?;
 
-				dbg!(&count);
-				if not_confirmed.contains("Неподтвержденные отзывы") && count == 10
-				{
-					continue;
-				}
-
-				author_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/span/span[1]/span", count );
-				date_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/div", count );
-				text_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[3]/div/a", count );
-
-				let author = block
-					.query(By::XPath(&author_xpath))
-					.first()
-					.await?
-					.inner_html()
-					.await?;
-
-				let date = block
-					.query(By::XPath(&date_xpath))
-					.first()
-					.await?
-					.inner_html()
-					.await?;
-
-				let text = block
-					.query(By::XPath(&text_xpath))
-					.first()
-					.await?
-					.inner_html()
-					.await?;
-
-				reviews.push(SaveReview {
-					firm_id: firm.firm_id.clone(),
-					two_gis_firm_id: firm.two_gis_firm_id.clone().unwrap(),
-					author: author.clone(),
-					date: date.clone(),
-					text: text.replace("\n", " "),
-				});
+			if block_content.contains("Неподтвержденные отзывы")
+				|| block_content.contains("Загрузить еще")
+				|| block_content.contains("С ответами")
+				|| block_content.contains("Люди говорят")
+				|| block_content.contains("Оцените и оставьте отзыв")
+				|| block_content.contains("/5")
+			{
+				continue;
 			}
+
+			author_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/span/span[1]/span", count );
+			date_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/div", count );
+			text_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[3]/div/a", count );
+
+			let author = block
+				.query(By::XPath(&author_xpath))
+				.first()
+				.await?
+				.inner_html()
+				.await?;
+
+			let date = block
+				.query(By::XPath(&date_xpath))
+				.first()
+				.await?
+				.inner_html()
+				.await?;
+
+			let text = block
+				.query(By::XPath(&text_xpath))
+				.first()
+				.await?
+				.inner_html()
+				.await?;
+
+			reviews.push(SaveReview {
+				firm_id: firm.firm_id.clone(),
+				two_gis_firm_id: firm.two_gis_firm_id.clone().unwrap(),
+				author: author.clone(),
+				date: date.clone(),
+				text: text.replace("\n", " "),
+			});
 		}
 
 		// запись в бд
@@ -160,9 +156,11 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			)
 			.fetch_one(&data.db)
 			.await;
-
-			dbg!(&review);
 		}
+
+		println!("№: {}", &j + 1);
+		println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());
+		println!("{}", "======");
 	}
 
 	driver.quit().await?;

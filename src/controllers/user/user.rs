@@ -4,12 +4,11 @@ use crate::{
 	AppState,
 };
 use actix_web::{
-	delete, get, put,
+	get, put,
 	web::{self, Path},
 	HttpResponse, Responder,
 };
 use actix_web_grants::proc_macro::has_any_role;
-use chrono::Utc;
 use serde_json::json;
 use uuid::Uuid;
 
