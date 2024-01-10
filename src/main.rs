@@ -6,7 +6,7 @@ mod utils;
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{http::header, web, App, HttpServer};
+use actix_web::{web, App, HttpServer};
 use actix_web_grants::GrantsMiddleware;
 use config::Config;
 use dotenv::dotenv;
