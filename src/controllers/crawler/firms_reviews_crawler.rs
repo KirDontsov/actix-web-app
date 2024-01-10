@@ -22,9 +22,6 @@ async fn firms_reviews_crawler_handler(
 }
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
-	let caps = DesiredCapabilities::chrome();
-	let driver = WebDriver::new("http://localhost:9515", caps).await?;
-
 	let count_query_result =
 		sqlx::query_as!(FirmsCount, "SELECT count(*) AS count FROM firms_copy")
 			.fetch_one(&data.db)
@@ -37,6 +34,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let firms_count = count_query_result.unwrap().count.unwrap();
 
 	for j in 0..=firms_count {
+		let caps = DesiredCapabilities::chrome();
+		let driver = WebDriver::new("http://localhost:9515", caps).await?;
+
 		let firm = sqlx::query_as!(
 			Firm,
 			"SELECT * FROM firms_copy ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
@@ -161,9 +161,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		println!("№: {}", &j + 1);
 		println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());
 		println!("{}", "======");
-	}
 
-	driver.quit().await?;
+		driver.clone().quit().await?;
+	}
 
 	Ok(())
 }
