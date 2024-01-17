@@ -50,3 +50,15 @@ pub struct SaveFirm {
 	pub site: String,
 	// pub default_email: String,
 }
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct FilteredFirm {
+	pub firm_id: String,
+	pub two_gis_firm_id: Option<String>,
+	pub category_id: String,
+	pub name: Option<String>,
+	pub address: Option<String>,
+	pub site: Option<String>,
+	pub default_phone: Option<String>,
+}

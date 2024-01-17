@@ -66,6 +66,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.inner_html()
 			.await?;
 
+		dbg!(&no_reviews);
+
 		if no_reviews.contains("Нет отзывов") {
 			continue;
 		}
@@ -81,7 +83,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.unwrap();
 
 		let edge: i32 = ((if reviews_count > 500.0 {
-			500.0
+			200.0
 		} else {
 			reviews_count
 		}) / 12.0)
@@ -97,7 +99,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		for (i, block) in blocks.clone().into_iter().enumerate() {
 			let count = i + 1;
+			dbg!(&count);
 			let block_content = block.inner_html().await?;
+			dbg!(&block_content);
+			dbg!(block_content.contains("Неподтвержденные отзывы"));
 
 			if block_content.contains("Неподтвержденные отзывы")
 				|| block_content.contains("Загрузить еще")
@@ -112,6 +117,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			author_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/span/span[1]/span", count );
 			date_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/div", count );
 			text_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[3]/div/a", count );
+
+			dbg!(&author_xpath);
+			dbg!(&date_xpath);
+			dbg!(&text_xpath);
 
 			let author = block
 				.query(By::XPath(&author_xpath))

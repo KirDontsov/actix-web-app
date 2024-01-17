@@ -27,3 +27,21 @@ pub struct SaveReview {
 	pub text: String,
 	// pub rating: String,
 }
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct FilteredReview {
+	pub review_id: String,
+	pub firm_id: String,
+	pub two_gis_firm_id: Option<String>,
+	pub author: Option<String>,
+	pub date: Option<String>,
+	pub text: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ReviewsFilterOptions {
+	pub firm_id: Option<String>,
+	pub page: Option<usize>,
+	pub limit: Option<usize>,
+}
