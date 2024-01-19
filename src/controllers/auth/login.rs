@@ -45,6 +45,7 @@ async fn login_handler(
 	let exp = (now + Duration::minutes(60)).timestamp() as usize;
 	let claims: TokenClaims = TokenClaims {
 		sub: user.id.to_string(),
+		role: user.role.to_string(),
 		exp,
 		iat,
 	};
