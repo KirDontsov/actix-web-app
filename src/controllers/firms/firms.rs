@@ -17,7 +17,6 @@ use crate::utils::filter_firm_record;
 async fn get_firms_handler(
 	opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
-	_: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
@@ -63,11 +62,7 @@ async fn get_firms_handler(
 }
 
 #[get("/firm/{id}")]
-async fn get_firm_handler(
-	path: Path<Uuid>,
-	data: web::Data<AppState>,
-	_: jwt_auth::JwtMiddleware,
-) -> impl Responder {
+async fn get_firm_handler(path: Path<Uuid>, data: web::Data<AppState>) -> impl Responder {
 	let firm_id = &path.into_inner();
 
 	let firm = sqlx::query_as!(Firm, "SELECT * FROM firms WHERE firm_id = $1", firm_id)
