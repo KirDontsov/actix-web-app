@@ -13,14 +13,16 @@ use uuid::Uuid;
 
 use crate::utils::filter_review_record;
 
-#[get("/reviews")]
+#[get("/reviews/{id}")]
 async fn get_reviews_handler(
+	path: Path<Uuid>,
 	opts: web::Query<ReviewsFilterOptions>,
 	data: web::Data<AppState>,
-	_: jwt_auth::JwtMiddleware,
+	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
-	let firm_id =
-		uuid::Uuid::parse_str(opts.firm_id.clone().unwrap_or("".to_string()).as_str()).unwrap();
+	let firm_id = &path.into_inner();
+	// let firm_id =
+	// 	uuid::Uuid::parse_str(opts.firm_id.clone().unwrap_or("".to_string()).as_str()).unwrap();
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
 
@@ -34,9 +36,13 @@ async fn get_reviews_handler(
 	.fetch_all(&data.db)
 	.await;
 
-	let count_query_result = sqlx::query_as!(ReviewsCount, "SELECT count(*) AS count FROM reviews")
-		.fetch_one(&data.db)
-		.await;
+	let count_query_result = sqlx::query_as!(
+		ReviewsCount,
+		"SELECT count(*) AS count FROM reviews WHERE firm_id = $1",
+		firm_id
+	)
+	.fetch_one(&data.db)
+	.await;
 
 	if count_query_result.is_err() {
 		let message = "Что-то пошло не так во время подсчета пользователей";
@@ -69,7 +75,7 @@ async fn get_reviews_handler(
 async fn get_review_handler(
 	path: Path<Uuid>,
 	data: web::Data<AppState>,
-	_: jwt_auth::JwtMiddleware,
+	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	let review_id = &path.into_inner();
 

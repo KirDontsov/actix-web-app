@@ -39,9 +39,9 @@ pub struct FilteredReview {
 	pub text: Option<String>,
 }
 
+// TODO: сделать общим и переиспользовать
 #[derive(Deserialize, Debug)]
 pub struct ReviewsFilterOptions {
-	pub firm_id: Option<String>,
 	pub page: Option<usize>,
 	pub limit: Option<usize>,
 }

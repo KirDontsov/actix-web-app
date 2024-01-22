@@ -1,6 +1,7 @@
 use actix_web::web;
 
 use crate::controllers::auth::*;
+use crate::controllers::cities::*;
 use crate::controllers::crawler::*;
 use crate::controllers::firms::*;
 use crate::controllers::quotes::*;
@@ -31,6 +32,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_firms_handler)
 		.service(get_firm_handler)
 		//review
+		.service(get_cities_handler)
 		.service(get_reviews_handler);
 
 	conf.service(scope);

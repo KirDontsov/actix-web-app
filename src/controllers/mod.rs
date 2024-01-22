@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod cities;
 pub mod config;
 pub mod crawler;
 pub mod firms;
