@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct Category {
 	pub category_id: uuid::Uuid,
 	pub name: Option<String>,
+	pub abbreviation: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

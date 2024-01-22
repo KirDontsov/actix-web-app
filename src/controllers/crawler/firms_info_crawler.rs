@@ -40,7 +40,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	let category = sqlx::query_as!(
 		Category,
-		"SELECT * FROM categories WHERE name = 'car_service';",
+		"SELECT * FROM categories WHERE abbreviation = 'car_service';",
 	)
 	.fetch_one(&data.db)
 	.await
