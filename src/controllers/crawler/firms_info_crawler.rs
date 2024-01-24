@@ -1,6 +1,6 @@
 use crate::{
 	jwt_auth,
-	models::{Category, Firm, FirmsCount, SaveFirm, TwoGisFirm},
+	models::{Category, Firm, FirmsCount, SaveFirm, TwoGisFirm, Type},
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
@@ -41,6 +41,14 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let category = sqlx::query_as!(
 		Category,
 		"SELECT * FROM categories WHERE abbreviation = 'car_service';",
+	)
+	.fetch_one(&data.db)
+	.await
+	.unwrap();
+
+	let type_item = sqlx::query_as!(
+		Type,
+		"SELECT * FROM types WHERE abbreviation = 'kuzovnoj_remont';",
 	)
 	.fetch_one(&data.db)
 	.await
@@ -172,6 +180,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			address: firm_address.replace("\n", ", "),
 			default_phone: firm_phone.clone(),
 			site: firm_site.clone(),
+			type_id: type_item.type_id.clone(),
 			// default_email: firm_email.clone(),
 		});
 
@@ -179,9 +188,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		for firm in firms {
 			let _ = sqlx::query_as!(
 				Firm,
-				"INSERT INTO firms (two_gis_firm_id, category_id, name, address, default_phone, site) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+				"INSERT INTO firms (two_gis_firm_id, category_id, type_id, name, address, default_phone, site) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
 				firm.two_gis_firm_id,
 				firm.category_id,
+				firm.type_id,
 				firm.name,
 				firm.address,
 				firm.default_phone,

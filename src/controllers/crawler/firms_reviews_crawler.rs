@@ -37,9 +37,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let caps = DesiredCapabilities::chrome();
 		let driver = WebDriver::new("http://localhost:9515", caps).await?;
 
+		// TODO: брать firms_copy
 		let firm = sqlx::query_as!(
 			Firm,
-			"SELECT * FROM firms_copy ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
+			"SELECT * FROM firms ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
 			j
 		)
 		.fetch_one(&data.db)

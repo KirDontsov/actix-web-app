@@ -1,5 +1,4 @@
 use crate::{
-	jwt_auth,
 	models::{FilteredReview, Review, ReviewsCount, ReviewsFilterOptions},
 	AppState,
 };
@@ -21,8 +20,6 @@ async fn get_reviews_handler(
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	let firm_id = &path.into_inner();
-	// let firm_id =
-	// 	uuid::Uuid::parse_str(opts.firm_id.clone().unwrap_or("".to_string()).as_str()).unwrap();
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
 

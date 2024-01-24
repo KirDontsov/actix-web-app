@@ -88,7 +88,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				.get(0)
 				.unwrap_or(&mut "");
 
-			let firm = (firm_name, res.to_string());
+			let firm: (String, String) = (firm_name, res.to_string());
 			firms.push(firm);
 		}
 

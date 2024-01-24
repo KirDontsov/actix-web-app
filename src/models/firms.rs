@@ -1,10 +1,11 @@
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct TwoGisFirm {
-	pub firm_id: uuid::Uuid,
+	pub firm_id: Uuid,
 	pub name: Option<String>,
 	pub two_gis_firm_id: Option<String>,
 	pub category_id: Option<String>,
@@ -20,11 +21,12 @@ pub struct FirmsCount {
 }
 
 #[allow(non_snake_case)]
-#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone, Default)]
 pub struct Firm {
-	pub firm_id: uuid::Uuid,
+	pub firm_id: Uuid,
 	pub two_gis_firm_id: Option<String>,
-	pub category_id: uuid::Uuid,
+	pub category_id: Uuid,
+	pub type_id: Uuid,
 	pub name: Option<String>,
 	pub description: Option<String>,
 	pub address: Option<String>,
@@ -42,7 +44,8 @@ pub struct Firm {
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct SaveFirm {
 	pub two_gis_firm_id: String,
-	pub category_id: uuid::Uuid,
+	pub category_id: Uuid,
+	pub type_id: Uuid,
 	pub name: String,
 	pub address: String,
 	// pub floor: String,
