@@ -12,7 +12,7 @@ actix-web-grants = "3.0.2"
 argon2 = "0.5.2"
 chrono = { version = "0.4.30", features = ["serde"] }
 dotenv = "0.15.0"
-env_logger = "0.10.0"
+env_logger = "0.11.0"
 jsonwebtoken = "9.1.0"
 rand_core = { version = "0.6.4", features = ["std"] }
 serde = { version = "1.0.188", features = ["derive"] }
@@ -21,3 +21,7 @@ sqlx = { version = "0.7.1", features = ["runtime-async-std-native-tls", "postgre
 thirtyfour = "0.31.0"
 tokio = "1.33.0"
 uuid = { version = "1.4.1", features = ["serde", "v4"] }
+openai-api-rs = "4.0.1"
+hyper = { version = "0.14.26", features = ["full"] }
+hyper-tls = { version = "0.5.0" }
+spinners = "4.1.0"

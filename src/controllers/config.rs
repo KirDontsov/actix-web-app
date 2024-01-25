@@ -1,11 +1,15 @@
 use actix_web::web;
 
 use crate::controllers::auth::*;
+use crate::controllers::categories::*;
+use crate::controllers::cities::*;
 use crate::controllers::crawler::*;
+use crate::controllers::data_processing::*;
 use crate::controllers::firms::*;
 use crate::controllers::quotes::*;
 use crate::controllers::reviews::*;
 use crate::controllers::routes::*;
+use crate::controllers::types::*;
 use crate::controllers::user::*;
 
 pub fn config(conf: &mut web::ServiceConfig) {
@@ -30,8 +34,16 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// firm
 		.service(get_firms_handler)
 		.service(get_firm_handler)
-		//review
-		.service(get_reviews_handler);
+		// cities
+		.service(get_cities_handler)
+		// categories
+		.service(get_categories_handler)
+		// types
+		.service(get_types_handler)
+		// reviews
+		.service(get_reviews_handler)
+		// chatgpt
+		.service(completions_handler);
 
 	conf.service(scope);
 }
