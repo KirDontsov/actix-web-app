@@ -1,6 +1,6 @@
 use crate::{
 	jwt_auth,
-	models::{Firm, FirmsCount, Review, SaveReview},
+	models::{Counter, Firm, FirmsCount, Review, SaveReview},
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
@@ -10,22 +10,34 @@ use tokio::time::Duration;
 #[get("/crawler/firms_reviews")]
 async fn firms_reviews_crawler_handler(
 	data: web::Data<AppState>,
-	_: jwt_auth::JwtMiddleware,
+	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
-	let _ = crawler(data).await;
-
+	loop {
+		let mut needs_to_restart = true;
+		if needs_to_restart {
+			let _: Result<(), Box<dyn std::error::Error>> = match crawler(data.clone()).await {
+				Ok(x) => {
+					needs_to_restart = false;
+					Ok(x)
+				}
+				Err(e) => {
+					println!("{:?}", e);
+					needs_to_restart = true;
+					Err(Box::new(e))
+				}
+			};
+		}
+	}
 	let json_response = serde_json::json!({
 		"status":  "success",
 	});
-
 	HttpResponse::Ok().json(json_response)
 }
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
-	let count_query_result =
-		sqlx::query_as!(FirmsCount, "SELECT count(*) AS count FROM firms_copy")
-			.fetch_one(&data.db)
-			.await;
+	let count_query_result = sqlx::query_as!(FirmsCount, "SELECT count(*) AS count FROM firms")
+		.fetch_one(&data.db)
+		.await;
 
 	if count_query_result.is_err() {
 		println!("Что-то пошло не так во время подсчета фирм");
@@ -33,10 +45,19 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	let firms_count = count_query_result.unwrap().count.unwrap();
 
-	for j in 0..=firms_count {
+	let counter = sqlx::query_as!(
+		Counter,
+		"SELECT * FROM counter WHERE counter_id = '4bb99137-6c90-42e6-8385-83c522cde804';"
+	)
+	.fetch_one(&data.db)
+	.await
+	.unwrap();
+
+	let start = &counter.value.clone().unwrap().parse::<i64>().unwrap();
+
+	for j in start.clone()..=firms_count {
 		let caps = DesiredCapabilities::chrome();
 		let driver = WebDriver::new("http://localhost:9515", caps).await?;
-
 		// TODO: брать firms_copy
 		let firm = sqlx::query_as!(
 			Firm,
@@ -61,27 +82,31 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let mut blocks: Vec<WebElement> = Vec::new();
 
 		let no_reviews = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]"))
+			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div"))
 			.first()
 			.await?
 			.inner_html()
 			.await?;
 
-		dbg!(&no_reviews);
-
-		if no_reviews.contains("Нет отзывов") {
+		if no_reviews.contains("Нет отзывов") || no_reviews.contains("Филиал удалён из справочника")
+		{
 			continue;
 		}
 
 		// кол-во отзывов
 		let reviews_count = driver
 			.query(By::XPath("//*[contains(text(),'Отзывы')]/span"))
+			.or(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div"))
 			.first()
 			.await?
 			.inner_html()
 			.await?
 			.parse::<f32>()
-			.unwrap();
+			.unwrap_or(0.0);
+
+		if reviews_count == 0.0 {
+			continue;
+		}
 
 		let edge: i32 = ((if reviews_count > 500.0 {
 			200.0
@@ -100,16 +125,16 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		for (i, block) in blocks.clone().into_iter().enumerate() {
 			let count = i + 1;
-			dbg!(&count);
 			let block_content = block.inner_html().await?;
-			dbg!(&block_content);
-			dbg!(block_content.contains("Неподтвержденные отзывы"));
 
 			if block_content.contains("Неподтвержденные отзывы")
 				|| block_content.contains("Загрузить еще")
 				|| block_content.contains("С ответами")
 				|| block_content.contains("Люди говорят")
 				|| block_content.contains("Оцените и оставьте отзыв")
+				|| block_content.contains("оценки")
+				|| block_content.contains("оценок")
+				|| block_content.contains("оценка")
 				|| block_content.contains("/5")
 			{
 				continue;
@@ -118,10 +143,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			author_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/span/span[1]/span", count );
 			date_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/div", count );
 			text_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[3]/div/a", count );
-
-			dbg!(&author_xpath);
-			dbg!(&date_xpath);
-			dbg!(&text_xpath);
 
 			let author = block
 				.query(By::XPath(&author_xpath))
@@ -167,6 +188,15 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.fetch_one(&data.db)
 			.await;
 		}
+
+		let _ = sqlx::query_as!(
+			Counter,
+			r#"UPDATE counter SET value = $1 WHERE counter_id = $2 RETURNING *"#,
+			(j + 1).to_string(),
+			counter.counter_id,
+		)
+		.fetch_one(&data.db)
+		.await;
 
 		println!("№: {}", &j + 1);
 		println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());

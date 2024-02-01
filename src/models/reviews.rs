@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[allow(non_snake_case)]
@@ -17,7 +18,6 @@ pub struct ReviewsCount {
 	pub count: Option<i64>,
 }
 
-#[allow(non_snake_case)]
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct SaveReview {
 	pub firm_id: uuid::Uuid,
@@ -28,7 +28,6 @@ pub struct SaveReview {
 	// pub rating: String,
 }
 
-#[allow(non_snake_case)]
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct FilteredReview {
 	pub review_id: String,
@@ -44,4 +43,22 @@ pub struct FilteredReview {
 pub struct ReviewsFilterOptions {
 	pub page: Option<usize>,
 	pub limit: Option<usize>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct OAIReview {
+	pub oai_review_id: uuid::Uuid,
+	pub firm_id: uuid::Uuid,
+	pub text: String,
+	#[serde(rename = "createdTs")]
+	pub created_ts: Option<DateTime<Utc>>,
+	#[serde(rename = "updatedTs")]
+	pub updated_ts: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct SaveOAIReview {
+	pub firm_id: uuid::Uuid,
+	pub text: String,
 }

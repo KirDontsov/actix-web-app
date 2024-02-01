@@ -65,3 +65,10 @@ pub struct FilteredFirm {
 	pub site: Option<String>,
 	pub default_phone: Option<String>,
 }
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct UpdateFirmDesc {
+	pub firm_id: Uuid,
+	pub description: String,
+}

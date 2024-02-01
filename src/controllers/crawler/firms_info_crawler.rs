@@ -10,7 +10,7 @@ use tokio::time::Duration;
 #[get("/crawler/firms_info")]
 async fn firms_info_crawler_handler(
 	data: web::Data<AppState>,
-	_: jwt_auth::JwtMiddleware,
+	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	let _ = crawler(data).await;
 
@@ -186,19 +186,19 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		// запись в бд
 		for firm in firms {
-			let _ = sqlx::query_as!(
-				Firm,
-				"INSERT INTO firms (two_gis_firm_id, category_id, type_id, name, address, default_phone, site) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-				firm.two_gis_firm_id,
-				firm.category_id,
-				firm.type_id,
-				firm.name,
-				firm.address,
-				firm.default_phone,
-				firm.site,
-			)
-			.fetch_one(&data.db)
-			.await;
+			// let _ = sqlx::query_as!(
+			// 	Firm,
+			// 	"INSERT INTO firms (two_gis_firm_id, category_id, type_id, name, address, default_phone, site) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+			// 	firm.two_gis_firm_id,
+			// 	firm.category_id,
+			// 	firm.type_id,
+			// 	firm.name,
+			// 	firm.address,
+			// 	firm.default_phone,
+			// 	firm.site,
+			// )
+			// .fetch_one(&data.db)
+			// .await;
 
 			dbg!(&firm);
 		}
