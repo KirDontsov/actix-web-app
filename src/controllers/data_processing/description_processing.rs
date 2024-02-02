@@ -165,8 +165,9 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 		let _ = sqlx::query_as!(
 			Counter,
-			r#"UPDATE counter SET value = $1 WHERE counter_id = $2 RETURNING *"#,
+			r#"UPDATE counter SET value = $1, name = $2 WHERE counter_id = $3 RETURNING *"#,
 			(j + 1).to_string(),
+			counter.name,
 			counter.counter_id,
 		)
 		.fetch_one(&data.db)

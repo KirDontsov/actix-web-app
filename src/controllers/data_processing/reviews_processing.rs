@@ -110,6 +110,10 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		.await
 		.unwrap();
 
+		if reviews_by_firm.len() < 2 {
+			continue;
+		}
+
 		let reviews_string = &reviews_by_firm
 			.into_iter()
 			.map(|review| review.text.unwrap_or("".to_string()))
@@ -124,8 +128,20 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		let uri = "https://neuroapi.host/v1/chat/completions";
 		let firm_name = &firm.name.clone().unwrap();
 		dbg!(&firm_name);
+		dbg!(&reviews_string);
 
-		let preamble = format!("Проанализируй и дай краткое содержание отзывов об автосервисе {}, объясни какие есть минусы и какие есть плюсы в организации {}, если большинство отзывов положительные, укажи что рейтинг организации хороший, если большинство отзывов отрицательные, укажи что рейтинг организации удовлетворительный", &firm_name, &firm_name);
+		let preamble = format!("Составь html страницу с текстом и списками, на основе отзывов об автосервисе {}, 
+		важно, чтобы текст обязательно был оформлен html разметкой,
+		важно, чтобы текст был понятен 18-летним девушкам и парням, которые не разбираются в автосервисах.
+		Кратко опиши какие виды работ обсуждают люди, 
+		что из этих работ было сделано хорошо, а что плохо,
+		обманывают ли в этом автосервисе или нет.
+		Выведи нумерованный список: плюсов и минусов если человек обратится в этот автосервис для ремонта своего автомобиля
+		Важно - подсчитай и выведи не нумерованным списком сумму положительных и сумму отрицательных отзывов,
+		если больше положительных отзывов, укажи что рейтинг организации хороший, 
+		если примерно поровну, укажи что рейтинг организации удовлетворительный
+		если больше отрицательных отзывов, укажи что рейтинг организации не удовлетворительный
+		", &firm_name);
 		let oai_token = env::var("OPENAI_API_KEY").unwrap();
 		let auth_header_val = format!("Bearer {}", oai_token);
 
@@ -170,13 +186,14 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 			.fetch_one(&data.db)
 			.await;
 
-			dbg!(&firm);
+			dbg!(&review);
 		}
 
 		let _ = sqlx::query_as!(
 			Counter,
-			r#"UPDATE counter SET value = $1 WHERE counter_id = $2 RETURNING *"#,
+			r#"UPDATE counter SET value = $1, name = $2 WHERE counter_id = $3 RETURNING *"#,
 			(j + 1).to_string(),
+			counter.name,
 			counter.counter_id,
 		)
 		.fetch_one(&data.db)

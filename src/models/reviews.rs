@@ -50,7 +50,7 @@ pub struct ReviewsFilterOptions {
 pub struct OAIReview {
 	pub oai_review_id: uuid::Uuid,
 	pub firm_id: uuid::Uuid,
-	pub text: String,
+	pub text: Option<String>,
 	#[serde(rename = "createdTs")]
 	pub created_ts: Option<DateTime<Utc>>,
 	#[serde(rename = "updatedTs")]
@@ -61,4 +61,11 @@ pub struct OAIReview {
 pub struct SaveOAIReview {
 	pub firm_id: uuid::Uuid,
 	pub text: String,
+}
+
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct FilteredOAIReview {
+	pub oai_review_id: String,
+	pub firm_id: String,
+	pub text: Option<String>,
 }

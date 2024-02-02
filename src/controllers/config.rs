@@ -6,6 +6,7 @@ use crate::controllers::cities::*;
 use crate::controllers::crawler::*;
 use crate::controllers::data_processing::*;
 use crate::controllers::firms::*;
+use crate::controllers::oai_reviews::*;
 use crate::controllers::quotes::*;
 use crate::controllers::reviews::*;
 use crate::controllers::routes::*;
@@ -43,6 +44,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_types_handler)
 		// reviews
 		.service(get_reviews_handler)
+		.service(get_oai_reviews_handler)
 		// chatgpt
 		.service(description_processing_handler)
 		.service(reviews_processing_handler);

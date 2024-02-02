@@ -1,6 +1,7 @@
 use crate::{
 	jwt_auth,
 	models::{Counter, Firm, FirmsCount, Review, SaveReview},
+	utils::{get_counter, update_counter},
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
@@ -35,6 +36,7 @@ async fn firms_reviews_crawler_handler(
 }
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
+	let counter_id: String = String::from("4bb99137-6c90-42e6-8385-83c522cde804");
 	let count_query_result = sqlx::query_as!(FirmsCount, "SELECT count(*) AS count FROM firms")
 		.fetch_one(&data.db)
 		.await;
@@ -53,7 +55,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	.await
 	.unwrap();
 
-	let start = &counter.value.clone().unwrap().parse::<i64>().unwrap();
+	// получаем из базы начало счетчика
+	let start = get_counter(data.db.clone(), &counter_id).await;
 
 	for j in start.clone()..=firms_count {
 		let caps = DesiredCapabilities::chrome();
@@ -82,13 +85,15 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let mut blocks: Vec<WebElement> = Vec::new();
 
 		let no_reviews = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div"))
+			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
 			.first()
 			.await?
 			.inner_html()
 			.await?;
 
-		if no_reviews.contains("Нет отзывов") || no_reviews.contains("Филиал удалён из справочника")
+		if no_reviews.contains("Нет отзывов")
+			|| no_reviews.contains("Филиал удалён из справочника")
+			|| no_reviews.contains("Филиал временно не работает")
 		{
 			continue;
 		}
@@ -109,14 +114,14 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		}
 
 		let edge: i32 = ((if reviews_count > 500.0 {
-			200.0
+			100.0
 		} else {
 			reviews_count
 		}) / 12.0)
 			.ceil() as i32;
 
 		// скролим в цикле
-		for _ in 0..=edge {
+		for _ in 0..edge {
 			blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div")).all().await?;
 			let last = blocks.last().unwrap();
 			last.scroll_into_view().await?;
@@ -188,15 +193,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.fetch_one(&data.db)
 			.await;
 		}
-
-		let _ = sqlx::query_as!(
-			Counter,
-			r#"UPDATE counter SET value = $1 WHERE counter_id = $2 RETURNING *"#,
-			(j + 1).to_string(),
-			counter.counter_id,
-		)
-		.fetch_one(&data.db)
-		.await;
+		// обновляем в базе счетчик
+		let _ = update_counter(data.db.clone(), &counter_id, &(j + 1).to_string()).await;
 
 		println!("№: {}", &j + 1);
 		println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());

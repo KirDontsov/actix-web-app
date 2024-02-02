@@ -1,3 +1,4 @@
+pub mod counter;
 pub mod filter_category_record;
 pub mod filter_city_record;
 pub mod filter_firm_record;
@@ -6,10 +7,11 @@ pub mod filter_review_record;
 pub mod filter_type_record;
 pub mod filter_user_record;
 
+pub use self::counter::*;
 pub use self::filter_category_record::filter_category_record;
 pub use self::filter_city_record::filter_city_record;
 pub use self::filter_firm_record::filter_firm_record;
 pub use self::filter_quote_record::filter_quote_record;
-pub use self::filter_review_record::filter_review_record;
+pub use self::filter_review_record::{filter_oai_review_record, filter_review_record};
 pub use self::filter_type_record::filter_type_record;
 pub use self::filter_user_record::filter_user_record;

@@ -6,6 +6,7 @@ use uuid::Uuid;
 pub struct Counter {
 	pub counter_id: Uuid,
 	pub value: Option<String>,
+	pub name: Option<String>,
 }
 
 #[allow(non_snake_case)]

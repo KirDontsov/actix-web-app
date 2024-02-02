@@ -5,6 +5,7 @@ pub mod config;
 pub mod crawler;
 pub mod data_processing;
 pub mod firms;
+pub mod oai_reviews;
 pub mod quotes;
 pub mod reviews;
 pub mod routes;

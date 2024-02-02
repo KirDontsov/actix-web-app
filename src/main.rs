@@ -1,3 +1,4 @@
+mod api;
 mod config;
 mod controllers;
 mod jwt_auth;
@@ -35,7 +36,7 @@ async fn main() -> std::io::Result<()> {
 		.await
 	{
 		Ok(pool) => {
-			println!("✅Connection to the database is successful!");
+			println!("✅ Connection to the database is successful!");
 			pool
 		}
 		Err(err) => {
@@ -44,7 +45,7 @@ async fn main() -> std::io::Result<()> {
 		}
 	};
 
-	println!("🚀 Server started successfully");
+	println!("✅ Server started successfully on http://localhost:8080/api");
 
 	HttpServer::new(move || {
 		let auth = GrantsMiddleware::with_extractor(extract);

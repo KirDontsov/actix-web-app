@@ -1,6 +1,7 @@
 use crate::{
 	jwt_auth,
 	models::{Category, Firm, FirmsCount, SaveFirm, TwoGisFirm, Type},
+	utils::{get_counter, update_counter},
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
@@ -12,16 +13,30 @@ async fn firms_info_crawler_handler(
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
-	let _ = crawler(data).await;
-
+	loop {
+		let mut needs_to_restart = true;
+		if needs_to_restart {
+			let _: Result<(), Box<dyn std::error::Error>> = match crawler(data.clone()).await {
+				Ok(x) => {
+					needs_to_restart = false;
+					Ok(x)
+				}
+				Err(e) => {
+					println!("{:?}", e);
+					needs_to_restart = true;
+					Err(Box::new(e))
+				}
+			};
+		}
+	}
 	let json_response = serde_json::json!({
-		"status":"success",
+		"status":  "success",
 	});
-
 	HttpResponse::Ok().json(json_response)
 }
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
+	let counter_id: String = String::from("55d7ef92-45ca-40df-8e88-4e1a32076367");
 	let caps = DesiredCapabilities::chrome();
 	let driver = WebDriver::new("http://localhost:9515", caps).await?;
 
@@ -54,7 +69,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	.await
 	.unwrap();
 
-	for j in 0..=firms_count {
+	// получаем из базы начало счетчика
+	let start = get_counter(data.db.clone(), &counter_id).await;
+
+	for j in start.clone()..=firms_count {
 		let firm = sqlx::query_as!(
 			TwoGisFirm,
 			"SELECT * FROM two_gis_firms ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
@@ -186,22 +204,25 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		// запись в бд
 		for firm in firms {
-			// let _ = sqlx::query_as!(
-			// 	Firm,
-			// 	"INSERT INTO firms (two_gis_firm_id, category_id, type_id, name, address, default_phone, site) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-			// 	firm.two_gis_firm_id,
-			// 	firm.category_id,
-			// 	firm.type_id,
-			// 	firm.name,
-			// 	firm.address,
-			// 	firm.default_phone,
-			// 	firm.site,
-			// )
-			// .fetch_one(&data.db)
-			// .await;
+			let _ = sqlx::query_as!(
+				Firm,
+				"INSERT INTO firms (two_gis_firm_id, category_id, type_id, name, address, default_phone, site) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+				firm.two_gis_firm_id,
+				firm.category_id,
+				firm.type_id,
+				firm.name,
+				firm.address,
+				firm.default_phone,
+				firm.site,
+			)
+			.fetch_one(&data.db)
+			.await;
 
 			dbg!(&firm);
 		}
+		// обновляем в базе счетчик
+		let _ = update_counter(data.db.clone(), &counter_id, &(j + 1).to_string()).await;
+
 		println!("№ {}", &j + 1);
 	}
 
