@@ -35,7 +35,7 @@ async fn get_oai_reviews_handler(
 
 	let count_query_result = sqlx::query_as!(
 		ReviewsCount,
-		"SELECT count(*) AS count FROM oai_reviews WHERE firm_id = $1",
+		"SELECT count(*) AS count FROM oai_reviews_copy WHERE firm_id = $1",
 		firm_id
 	)
 	.fetch_one(&data.db)

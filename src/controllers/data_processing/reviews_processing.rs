@@ -1,4 +1,5 @@
-use crate::models::{Counter, Firm, OAIReview, Review, ReviewsCount, SaveOAIReview};
+use crate::models::{Firm, OAIReview, Review, ReviewsCount, SaveOAIReview};
+use crate::utils::{get_counter, update_counter};
 use crate::AppState;
 use actix_web::web::Buf;
 use actix_web::{get, web, HttpResponse, Responder};
@@ -65,6 +66,14 @@ async fn reviews_processing_handler(
 }
 
 async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
+	let counter_id: String = String::from("a518df5b-1258-482b-aa57-e07c57961a69");
+	let https = HttpsConnector::new();
+	let client = Client::builder().build(https);
+	let uri = std::env::var("OPENAI_API_BASE").unwrap();
+	let oai_token = env::var("OPENAI_API_KEY").unwrap();
+	let model = "gpt-3.5-turbo".to_string();
+	let auth_header_val = format!("Bearer {}", oai_token);
+
 	let count_query_result = sqlx::query_as!(ReviewsCount, "SELECT count(*) AS count FROM firms")
 		.fetch_one(&data.db)
 		.await;
@@ -74,30 +83,33 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	}
 
 	let firms_count = count_query_result.unwrap().count.unwrap();
-
 	dbg!(&firms_count);
 
-	let counter = sqlx::query_as!(
-		Counter,
-		"SELECT * FROM counter WHERE counter_id = '4bb99137-6c90-42e6-8385-83c522cde804';"
-	)
-	.fetch_one(&data.db)
-	.await
-	.unwrap();
-
-	let start = &counter.value.clone().unwrap().parse::<i64>().unwrap();
+	// получаем из базы начало счетчика
+	let start = get_counter(&data.db, &counter_id).await;
 
 	for j in start.clone()..firms_count {
 		println!("Firm: {:?}", j + 1);
 
-		let firm = sqlx::query_as!(
-			Firm,
-			"SELECT * FROM firms ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
-			j
+		let firm = Firm::get_firm(&data.db, j).await?;
+
+		let firm_id = &firm.firm_id.clone();
+		let firm_name = &firm.name.clone().unwrap();
+		dbg!(&firm_id);
+		dbg!(&firm_name);
+
+		let oai_review = sqlx::query_as!(
+			OAIReview,
+			r#"SELECT * FROM oai_reviews_copy WHERE firm_id = $1;"#,
+			&firm.firm_id
 		)
 		.fetch_one(&data.db)
-		.await
-		.unwrap();
+		.await;
+
+		if oai_review.is_ok() {
+			println!("Already exists");
+			continue;
+		}
 
 		let mut reviews: Vec<SaveOAIReview> = Vec::new();
 
@@ -111,6 +123,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		.unwrap();
 
 		if reviews_by_firm.len() < 2 {
+			println!("SKIP - Too few reviews");
 			continue;
 		}
 
@@ -121,41 +134,64 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 			.collect::<Vec<String>>()
 			.join("; ");
 
-		// ====
+		// system preamble
+		let first_message = OAIMessage {
+			role: "system".to_string(),
+			content: "Ты писатель-копирайтер, пишешь SEO оптимизированные тексты".to_string(),
+		};
 
-		let https = HttpsConnector::new();
-		let client = Client::builder().build(https);
-		let uri = "https://neuroapi.host/v1/chat/completions";
-		let firm_name = &firm.name.clone().unwrap();
-		dbg!(&firm_name);
-		dbg!(&reviews_string);
+		// user preamble
+		let preamble = format!("
+		Вот отзывы которые ты должен проанализировать: {}
 
-		let preamble = format!("Составь html страницу с текстом и списками, на основе отзывов об автосервисе {}, 
-		важно, чтобы текст обязательно был оформлен html разметкой,
-		важно, чтобы текст был понятен 18-летним девушкам и парням, которые не разбираются в автосервисах.
-		Кратко опиши какие виды работ обсуждают люди, 
+		Напиши большую статью, на основе этих отзывов об автосервисе {}, 
+		важно, чтобы текст был понятен 18-летним девушкам и парням, которые не разбираются в автосервисах, но без упоминания слова - Статья
+
+		Подробно опиши в этой статье: какие виды работ обсуждают люди, 
 		что из этих работ было сделано хорошо, а что плохо,
 		обманывают ли в этом автосервисе или нет.
-		Выведи нумерованный список: плюсов и минусов если человек обратится в этот автосервис для ремонта своего автомобиля
+		Например, если об этом говорят в отзывах:
+		В отзывах обсуждаются следующие услуги: 
+		1. Кузовной ремонт - плохое качество
+		2. Мастера - отзывчивые
+
+		Выведи нумерованный список: плюсов и минусов если человек обратится в этот автосервис для ремонта своего автомобиля.
+		Например, если об этом говорят в отзывах: 
+		Плюсы
+		1. Хорошо чинят машины
+		2. Хорошо красят
+		Минусы
+		1. Далеко от центра города
+
 		Важно - подсчитай и выведи не нумерованным списком сумму положительных и сумму отрицательных отзывов,
-		если больше положительных отзывов, укажи что рейтинг организации хороший, 
-		если примерно поровну, укажи что рейтинг организации удовлетворительный
-		если больше отрицательных отзывов, укажи что рейтинг организации не удовлетворительный
-		", &firm_name);
-		let oai_token = env::var("OPENAI_API_KEY").unwrap();
-		let auth_header_val = format!("Bearer {}", oai_token);
+		Например: 
+		Положительных отзывов - 15
+		Отрицательных отзывов - 5
+
+		Сделай выводы, на основе плюсов и минусов организации, количества положительных и отрицательных отзывов.
+		Например:
+		У организации больше положительных отзывов, укажи что рейтинг организации хороший, и объясни почему.
+		Или например:
+		У организации поровну положительных и отрицательных отзывов, укажи что рейтинг организации удовлетворительный, и объясни почему.
+		Или например:
+		У организации больше отрицательных отзывов, укажи что рейтинг организации не удовлетворительный, и объясни почему.
+		
+		В конце текста укажи: *Пожалуйста, обратите внимание, что данный обзор сформирован нейросетью и может быть не точным*
+		", &reviews_string.chars().take(3800).collect::<String>(), &firm_name);
+
+		let second_message = OAIMessage {
+			role: "user".to_string(),
+			content: format!("{}", preamble),
+		};
 
 		// request
 		let oai_request = OAIRequest {
-			model: "gpt-3.5-turbo".to_string(),
-			messages: vec![OAIMessage {
-				role: "user".to_string(),
-				content: format!("{}: {}", preamble, &reviews_string),
-			}],
+			model: model.clone(),
+			messages: vec![first_message, second_message],
 		};
 
 		let body = Body::from(serde_json::to_vec(&oai_request)?);
-		let req = Request::post(uri)
+		let req = Request::post(&uri)
 			.header(header::CONTENT_TYPE, "application/json")
 			.header("Authorization", &auth_header_val)
 			.body(body)
@@ -177,27 +213,19 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 		// запись в бд
 		for review in reviews {
-			let _ = sqlx::query_as!(
+			let x = sqlx::query_as!(
 				OAIReview,
-				r#"INSERT INTO oai_reviews (firm_id, text) VALUES ($1, $2) RETURNING *"#,
+				r#"INSERT INTO oai_reviews_copy (firm_id, text) VALUES ($1, $2) RETURNING *"#,
 				review.firm_id,
 				review.text,
 			)
 			.fetch_one(&data.db)
 			.await;
 
-			dbg!(&review);
+			dbg!(&x);
 		}
 
-		let _ = sqlx::query_as!(
-			Counter,
-			r#"UPDATE counter SET value = $1, name = $2 WHERE counter_id = $3 RETURNING *"#,
-			(j + 1).to_string(),
-			counter.name,
-			counter.counter_id,
-		)
-		.fetch_one(&data.db)
-		.await;
+		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 	}
 
 	Ok(())

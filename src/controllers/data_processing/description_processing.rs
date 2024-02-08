@@ -1,4 +1,5 @@
-use crate::models::{Counter, Firm, ReviewsCount, UpdateFirmDesc};
+use crate::models::{Firm, OAIDescription, ReviewsCount, UpdateFirmDesc};
+use crate::utils::{get_counter, update_counter};
 use crate::AppState;
 use actix_web::web::Buf;
 use actix_web::{get, web, HttpResponse, Responder};
@@ -65,6 +66,7 @@ async fn description_processing_handler(
 }
 
 async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
+	let counter_id: String = String::from("5e4f8432-c1db-4980-9b63-127fd320cdde");
 	let count_query_result = sqlx::query_as!(ReviewsCount, "SELECT count(*) AS count FROM firms")
 		.fetch_one(&data.db)
 		.await;
@@ -77,27 +79,13 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 	dbg!(&firms_count);
 
-	let counter = sqlx::query_as!(
-		Counter,
-		"SELECT * FROM counter WHERE counter_id = '4bb99137-6c90-42e6-8385-83c522cde804';"
-	)
-	.fetch_one(&data.db)
-	.await
-	.unwrap();
-
-	let start = &counter.value.clone().unwrap().parse::<i64>().unwrap();
+	// получаем из базы начало счетчика
+	let start = get_counter(&data.db, &counter_id).await;
 
 	for j in start.clone()..firms_count {
 		println!("Firm: {:?}", j + 1);
 
-		let firm = sqlx::query_as!(
-			Firm,
-			"SELECT * FROM firms ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
-			j
-		)
-		.fetch_one(&data.db)
-		.await
-		.unwrap();
+		let firm = Firm::get_firm(&data.db, j).await?;
 
 		let mut firms: Vec<UpdateFirmDesc> = Vec::new();
 
@@ -152,10 +140,10 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		// запись в бд
 		for firm in firms {
 			let _ = sqlx::query_as!(
-				Firm,
-				r#"UPDATE firms SET description = $1 WHERE firm_id = $2 RETURNING *"#,
-				firm.description,
+				OAIDescription,
+				r#"INSERT INTO oai_descriptions (firm_id, text) VALUES ($1, $2) RETURNING *"#,
 				firm.firm_id,
+				firm.description,
 			)
 			.fetch_one(&data.db)
 			.await;
@@ -163,15 +151,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 			dbg!(&firm);
 		}
 
-		let _ = sqlx::query_as!(
-			Counter,
-			r#"UPDATE counter SET value = $1, name = $2 WHERE counter_id = $3 RETURNING *"#,
-			(j + 1).to_string(),
-			counter.name,
-			counter.counter_id,
-		)
-		.fetch_one(&data.db)
-		.await;
+		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 	}
 
 	Ok(())

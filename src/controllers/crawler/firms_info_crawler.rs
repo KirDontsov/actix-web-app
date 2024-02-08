@@ -1,6 +1,6 @@
 use crate::{
 	jwt_auth,
-	models::{Category, Firm, FirmsCount, SaveFirm, TwoGisFirm, Type},
+	models::{Category, Counter, Firm, FirmsCount, SaveCounter, SaveFirm, TwoGisFirm, Type},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -70,7 +70,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	.unwrap();
 
 	// получаем из базы начало счетчика
-	let start = get_counter(data.db.clone(), &counter_id).await;
+	let start = get_counter(&data.db, &counter_id).await;
+	dbg!(&start);
 
 	for j in start.clone()..=firms_count {
 		let firm = sqlx::query_as!(
@@ -119,8 +120,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			}
 		}
 		info_blocks_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div", info_block_number);
-		dbg!(&info_block_number);
-		dbg!(&info_blocks_xpath);
 
 		// находим блоки с инфой
 		let info_blocks = driver.query(By::XPath(&info_blocks_xpath)).all().await?;
@@ -154,11 +153,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		if info_blocks.len() <= 3 {
 			site_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[last()]", info_block_number);
 		}
-
-		dbg!(&info_blocks.len());
-		dbg!(&address_xpath);
-		dbg!(&phone_xpath);
-		dbg!(&site_xpath);
 
 		let firm_address = info_blocks[0]
 			.query(By::XPath(&address_xpath))
@@ -221,7 +215,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			dbg!(&firm);
 		}
 		// обновляем в базе счетчик
-		let _ = update_counter(data.db.clone(), &counter_id, &(j + 1).to_string()).await;
+		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 
 		println!("№ {}", &j + 1);
 	}

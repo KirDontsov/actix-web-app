@@ -47,18 +47,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	let firms_count = count_query_result.unwrap().count.unwrap();
 
-	let counter = sqlx::query_as!(
-		Counter,
-		"SELECT * FROM counter WHERE counter_id = '4bb99137-6c90-42e6-8385-83c522cde804';"
-	)
-	.fetch_one(&data.db)
-	.await
-	.unwrap();
-
 	// получаем из базы начало счетчика
-	let start = get_counter(data.db.clone(), &counter_id).await;
+	let start = get_counter(&data.db, &counter_id).await;
 
-	for j in start.clone()..=firms_count {
+	for j in start.clone()..=62 {
 		let caps = DesiredCapabilities::chrome();
 		let driver = WebDriver::new("http://localhost:9515", caps).await?;
 		// TODO: брать firms_copy
@@ -194,7 +186,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.await;
 		}
 		// обновляем в базе счетчик
-		let _ = update_counter(data.db.clone(), &counter_id, &(j + 1).to_string()).await;
+		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 
 		println!("№: {}", &j + 1);
 		println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());

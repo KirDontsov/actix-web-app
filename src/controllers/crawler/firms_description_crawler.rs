@@ -53,7 +53,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	dbg!(&firms_count);
 
 	// получаем из базы начало счетчика
-	let start = get_counter(data.db.clone(), &counter_id).await;
+	let start = get_counter(&data.db, &counter_id).await;
 
 	for j in start.clone()..=firms_count {
 		let firm = sqlx::query_as!(
@@ -149,7 +149,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			dbg!(&firm);
 		}
 		// обновляем в базе счетчик
-		let _ = update_counter(data.db.clone(), &counter_id, &(j + 1).to_string()).await;
+		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 
 		println!("№ {}", &j + 1);
 	}
