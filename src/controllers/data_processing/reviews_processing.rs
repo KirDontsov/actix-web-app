@@ -38,7 +38,7 @@ struct OAIRequest {
 	messages: Vec<OAIMessage>,
 }
 
-#[get("/reviews_processing")]
+#[get("/processing/reviews")]
 async fn reviews_processing_handler(
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,

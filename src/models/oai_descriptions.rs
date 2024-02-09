@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct OAIDescription {
 	pub oai_description_id: uuid::Uuid,
 	pub firm_id: uuid::Uuid,
-	pub text: Option<String>,
+	pub oai_description_value: Option<String>,
 	#[serde(rename = "createdTs")]
 	pub created_ts: Option<DateTime<Utc>>,
 	#[serde(rename = "updatedTs")]

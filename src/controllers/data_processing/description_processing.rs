@@ -38,7 +38,7 @@ struct OAIRequest {
 	messages: Vec<OAIMessage>,
 }
 
-#[get("/description_processing")]
+#[get("/processing/description")]
 async fn description_processing_handler(
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
@@ -67,6 +67,8 @@ async fn description_processing_handler(
 
 async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
 	let counter_id: String = String::from("5e4f8432-c1db-4980-9b63-127fd320cdde");
+	let oai_token = env::var("OPENAI_API_KEY").unwrap();
+	let auth_header_val = format!("Bearer {}", oai_token);
 	let count_query_result = sqlx::query_as!(ReviewsCount, "SELECT count(*) AS count FROM firms")
 		.fetch_one(&data.db)
 		.await;
@@ -94,15 +96,47 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		let https = HttpsConnector::new();
 		let client = Client::builder().build(https);
 		let uri = "https://neuroapi.host/v1/chat/completions";
+
+		let firm_id = &firm.firm_id.clone();
 		let firm_name = &firm.name.clone().unwrap();
+		let firm_desc = &firm.description.clone().unwrap();
+		let firm_phone = &firm.default_phone.clone().unwrap();
+		dbg!(&firm_id);
 		dbg!(&firm_name);
-		let preamble = format!("Проанализируй описание автосервиса {} и напиши на его основе статью-описание о том, чем занимается организация {}, какие есть преимущества сотрудничества именно с этим автосервисом {}", &firm_name, &firm_name, &firm_name);
-		let oai_token = env::var("OPENAI_API_KEY").unwrap();
-		let auth_header_val = format!("Bearer {}", oai_token);
+
+		let oai_description = sqlx::query_as!(
+			OAIDescription,
+			r#"SELECT * FROM oai_descriptions WHERE firm_id = $1;"#,
+			&firm.firm_id
+		)
+		.fetch_one(&data.db)
+		.await;
+
+		if oai_description.is_ok() {
+			println!("Already exists");
+			continue;
+		}
+		let preamble = format!("Вот описание автосервиса которое ты должен проанализировать: {}
+
+		Напиши большую статью об автосервисе, на основе анализа этого описания {}, 
+		важно, чтобы текст был понятен 18-летним девушкам и парням, которые не разбираются в автосервисах, но без упоминания слова - \"Статья\"
+
+		Подробно опиши в этой статье: какие виды работ может осуществлять данная организация, например, если об этом указано в описании:
+		Данная организация может оказывать следующие виды работ: 
+		1. Кузовной ремонт
+
+		Придумай в чем заключается миссия данной организации по ремонту автомобилей, чем она помогает людям.
+
+		Укажи что в компании работают опытные и квалифицированные сотрудники, которые всегда помогут и сделают это быстро и качественно.
+		
+		В конце текста укажи: Для получения более детальной информации позвоните по номеру: {}
+		
+		И перечисли все виды работ, которые могут быть свзаны с ремонтом автомобиля
+		", &firm_desc, &firm_name, &firm_phone);
 
 		// request
 		let oai_request = OAIRequest {
-			model: "gpt-3.5-turbo-1106".to_string(),
+			model: "gpt-3.5-turbo".to_string(),
 			messages: vec![OAIMessage {
 				role: "user".to_string(),
 				content: format!(
@@ -141,7 +175,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		for firm in firms {
 			let _ = sqlx::query_as!(
 				OAIDescription,
-				r#"INSERT INTO oai_descriptions (firm_id, text) VALUES ($1, $2) RETURNING *"#,
+				r#"INSERT INTO oai_descriptions (firm_id, oai_description_value) VALUES ($1, $2) RETURNING *"#,
 				firm.firm_id,
 				firm.description,
 			)

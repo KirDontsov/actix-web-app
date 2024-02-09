@@ -72,3 +72,25 @@ pub struct UpdateFirmDesc {
 	pub firm_id: Uuid,
 	pub description: String,
 }
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone, Default)]
+pub struct ExtFirmWithOaiDescription {
+	pub firm_id: Uuid,
+	pub name: Option<String>,
+	pub address: Option<String>,
+	pub site: Option<String>,
+	pub default_phone: Option<String>,
+	pub oai_description_value: Option<String>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct ExtFilteredFirmWithOaiDescription {
+	pub firm_id: String,
+	pub name: Option<String>,
+	pub address: Option<String>,
+	pub site: Option<String>,
+	pub default_phone: Option<String>,
+	pub oai_description_value: Option<String>,
+}
