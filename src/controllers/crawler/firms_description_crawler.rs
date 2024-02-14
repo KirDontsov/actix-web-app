@@ -8,7 +8,7 @@ use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 
-#[get("/crawler/firms_description")]
+#[get("/crawler/descriptions")]
 async fn firms_description_crawler_handler(
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,

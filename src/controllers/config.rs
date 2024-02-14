@@ -25,6 +25,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(firms_info_crawler_handler)
 		.service(firms_reviews_crawler_handler)
 		.service(firms_description_crawler_handler)
+		.service(firms_images_crawler_handler)
 		//user
 		.service(get_users_handler)
 		.service(get_user_handler)

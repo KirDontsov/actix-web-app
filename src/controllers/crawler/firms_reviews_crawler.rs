@@ -8,7 +8,7 @@ use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
 use tokio::time::Duration;
 
-#[get("/crawler/firms_reviews")]
+#[get("/crawler/reviews")]
 async fn firms_reviews_crawler_handler(
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
@@ -50,7 +50,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
 
-	for j in start.clone()..=62 {
+	for j in start.clone()..=firms_count {
 		let caps = DesiredCapabilities::chrome();
 		let driver = WebDriver::new("http://localhost:9515", caps).await?;
 		// TODO: брать firms_copy

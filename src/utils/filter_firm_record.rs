@@ -24,5 +24,6 @@ pub fn filter_ext_firm_record(
 		site: firm.site.to_owned(),
 		default_phone: firm.default_phone.to_owned(),
 		oai_description_value: firm.oai_description_value.to_owned(),
+		description: firm.description.to_owned(),
 	}
 }

@@ -22,7 +22,7 @@ async fn get_firms_handler(
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
 
 	let query_result = sqlx::query_as!(
-		ExtFirmWithOaiDescription, "SELECT a.firm_id, a.name, a.address, a.site, a.default_phone, b.oai_description_value FROM firms a 
+		ExtFirmWithOaiDescription, "SELECT a.firm_id, a.name, a.address, a.site, a.default_phone, a.description, b.oai_description_value FROM firms a 
 		JOIN oai_descriptions b ON a.firm_id = b.firm_id
 		ORDER BY a.firm_id
 	 	LIMIT $1 OFFSET $2",
@@ -67,7 +67,7 @@ async fn get_firms_handler(
 async fn get_firm_handler(path: Path<Uuid>, data: web::Data<AppState>) -> impl Responder {
 	let firm_id = &path.into_inner();
 
-	let firm = sqlx::query_as!(ExtFirmWithOaiDescription, "SELECT a.firm_id, a.name, a.address, a.site, a.default_phone, b.oai_description_value FROM firms a 
+	let firm = sqlx::query_as!(ExtFirmWithOaiDescription, "SELECT a.firm_id, a.name, a.address, a.site, a.default_phone, a.description, b.oai_description_value FROM firms a 
 		JOIN oai_descriptions b ON a.firm_id = b.firm_id
 		WHERE a.firm_id = $1", firm_id)
 	.fetch_one(&data.db)

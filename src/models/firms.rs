@@ -82,6 +82,7 @@ pub struct ExtFirmWithOaiDescription {
 	pub site: Option<String>,
 	pub default_phone: Option<String>,
 	pub oai_description_value: Option<String>,
+	pub description: Option<String>,
 }
 
 #[allow(non_snake_case)]
@@ -93,4 +94,5 @@ pub struct ExtFilteredFirmWithOaiDescription {
 	pub site: Option<String>,
 	pub default_phone: Option<String>,
 	pub oai_description_value: Option<String>,
+	pub description: Option<String>,
 }
