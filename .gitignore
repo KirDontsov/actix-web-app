@@ -3,3 +3,12 @@
 .vscode/**
 /data/**
 .env
+
+output/**
+
+# misc
+.DS_Store
+*.pem
+
+# production
+/build

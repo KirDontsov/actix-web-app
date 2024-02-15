@@ -1,17 +1,14 @@
 use crate::{
 	jwt_auth,
-	models::{Counter, Firm, FirmsCount, Review, SaveReview},
+	models::{Firm, FirmsCount, Image},
 	utils::{get_counter, update_counter},
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
-use std::{
-	fs::File,
-	io::{copy, Cursor},
-};
+use std::{fs::create_dir, path::Path};
 use thirtyfour::prelude::*;
-use thiserror::Error;
-use tokio::time::Duration;
+use tokio::time::{sleep, Duration};
+use uuid::Uuid;
 
 #[get("/crawler/images")]
 async fn firms_images_crawler_handler(
@@ -41,86 +38,158 @@ async fn firms_images_crawler_handler(
 }
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
-	let caps = DesiredCapabilities::chrome();
-	let driver = WebDriver::new("http://localhost:9515", caps).await?;
+	let counter_id: String = String::from("2a94ecc5-fb8d-4b4d-bb03-e3ee2eb708da");
 
-	driver.goto("https://books.toscrape.com/").await?;
+	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
 
-	tokio::time::sleep(Duration::from_secs(5)).await;
+	// получаем из базы начало счетчика
+	let start = get_counter(&data.db, &counter_id).await;
 
-	let mut blocks: Vec<WebElement> = Vec::new();
-	let mut img_xpath;
-	// let mut reviews: Vec<SaveReview> = Vec::new();
+	for j in start.clone()..=firms_count {
+		let caps = DesiredCapabilities::chrome();
+		let driver = WebDriver::new("http://localhost:9515", caps).await?;
+		let firm = Firm::get_firm(&data.db, j).await.unwrap();
+		println!("№ {}", &j);
+		driver
+			.goto(format!(
+				"https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/photos",
+				&firm.two_gis_firm_id.clone().unwrap()
+			))
+			.await?;
+		sleep(Duration::from_secs(5)).await;
 
-	blocks = driver.query(By::XPath("//div/ol/li")).all().await?;
-
-	for (i, block) in blocks.clone().into_iter().enumerate() {
-		let count = i + 1;
-		// let block_content = block.inner_html().await?;
-
-		img_xpath = format!("//div/ol/li[{}]/article/div/a/img", count);
-
-		let Some(img) = block
-			.query(By::XPath(&img_xpath))
+		let err_block = driver
+			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
 			.first()
 			.await?
-			.attr("src")
-			.await?
-		else {
-			panic!("no src!");
-		};
+			.inner_html()
+			.await?;
 
-		dbg!(&img);
-
-		let file_name = format!("output/rust-scrapper-{}.jpg", &i);
-		let image_url = format!("https://books.toscrape.com/{}", &img);
-		match download_image_to(&image_url, &file_name).await {
-			Ok(_) => println!("image saved successfully"),
-			Err(e) => println!("error while downloading image: {}", e),
+		if err_block.contains("Филиал удалён из справочника")
+			|| err_block.contains("Филиал временно не работает")
+			|| err_block.contains("Добавьте сюда фотографий!")
+		{
+			continue;
 		}
 
-		// reviews.push(SaveReview {
-		// 	firm_id: firm.firm_id.clone(),
-		// 	two_gis_firm_id: firm.two_gis_firm_id.clone().unwrap(),
-		// 	author: author.clone(),
-		// 	date: date.clone(),
-		// 	text: text.replace("\n", " "),
-		// });
+		let mut blocks: Vec<WebElement> = Vec::new();
+
+		// кол-во отзывов
+		let img_count = driver
+			.query(By::XPath("//*[contains(text(),'Отзывы')]/span"))
+			.or(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div"))
+			.first()
+			.await?
+			.inner_html()
+			.await?
+			.parse::<f32>()
+			.unwrap_or(0.0);
+
+		if img_count == 0.0 {
+			continue;
+		}
+
+		let edge: i32 = ((if img_count > 500.0 { 100.0 } else { img_count }) / 12.0).ceil() as i32;
+
+		// скролим в цикле
+		for _ in 0..edge {
+			blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[2]/div")).all().await?;
+			let last = blocks.last().unwrap();
+			last.scroll_into_view().await?;
+			sleep(Duration::from_secs(2)).await;
+		}
+
+		let dir_name = format!("{}", &firm.firm_id.clone());
+		let _ = create_dir(Path::new(format!("output/{}", &dir_name).as_str()))?;
+
+		for (i, block) in blocks.clone().into_iter().enumerate() {
+			let block_content = block.inner_html().await?;
+
+			if block_content.contains("Добавить фото") {
+				continue;
+			}
+			// Записываем в бд этот img_id, firm_id и можно сгенерить Alt для него
+			let img_id = Uuid::new_v4();
+			let file_name = format!("{}.jpg", &img_id);
+
+			let img = match find_img(block).await {
+				Ok(img_elem) => {
+					println!("next");
+					img_elem
+				}
+				Err(e) => {
+					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+					dbg!(&counter);
+					println!("error while searching image: {}", e);
+					"".to_string()
+				}
+			};
+
+			if &img == "" {
+				break;
+			}
+
+			dbg!(&dir_name);
+			dbg!(&img);
+
+			// Get the current window handle.
+			let handle = driver.window().await?;
+			// Open a new tab.
+			driver.new_tab().await?;
+
+			// Get window handles and switch to the new tab.
+			let handles = driver.windows().await?;
+			driver.switch_to_window(handles[1].clone()).await?;
+
+			// We are now controlling the new tab.
+			driver.goto(&img.replace("_328x170", "")).await?;
+
+			match driver
+				.query(By::Tag("img"))
+				.first()
+				.await?
+				.screenshot(Path::new(
+					format!("{}/{}/{}", "output", dir_name, &file_name).as_str(),
+				))
+				.await
+			{
+				Ok(_) => println!("image saved successfully"),
+				Err(e) => println!("error while downloading image: {}", e),
+			};
+
+			// Switch back to original tab.
+			driver.switch_to_window(handle.clone()).await?;
+
+			// запись в бд
+			let _ = sqlx::query_as!(
+				Image,
+				"INSERT INTO images (img_id, firm_id, img_alt) VALUES ($1, $2, $3) RETURNING *",
+				img_id.clone(),
+				firm.firm_id.clone(),
+				firm.name.clone().unwrap(),
+			)
+			.fetch_one(&data.db)
+			.await;
+		}
+
+		// обновляем в базе счетчик
+		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+
+		println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());
+		println!("{}", "======");
+		driver.clone().quit().await?;
 	}
-
-	// запись в бд
-	// for review in reviews {
-	// let _ = sqlx::query_as!(
-	// 	Review,
-	// 	"INSERT INTO reviews (firm_id, two_gis_firm_id, author, date, text) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-	// 	review.firm_id,
-	// 	review.two_gis_firm_id,
-	// 	review.author,
-	// 	review.date,
-	// 	review.text,
-	// )
-	// .fetch_one(&data.db)
-	// .await;
-	// }
-
-	// println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());
-	println!("{}", "======");
-
-	driver.clone().quit().await?;
 
 	Ok(())
 }
 
-async fn download_image_to(url: &str, file_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-	// Send an HTTP GET request to the URL
-	let response = reqwest::get(url).await?;
-	// Create a new file to write the downloaded image to
-	let mut file = File::create(file_name)?;
-
-	// Create a cursor that wraps the response body
-	let mut content = Cursor::new(response.bytes().await?);
-	// Copy the content from the cursor to the file
-	copy(&mut content, &mut file)?;
-
-	Ok(())
+pub async fn find_img(block: WebElement) -> Result<String, WebDriverError> {
+	let img = block
+		.query(By::Tag("img"))
+		.first()
+		.await?
+		.attr("src")
+		.await?
+		.unwrap();
+	Ok(img)
 }

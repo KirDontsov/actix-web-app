@@ -6,7 +6,7 @@ use crate::{
 };
 use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
-use tokio::time::Duration;
+use tokio::time::{sleep, Duration};
 
 #[get("/crawler/infos")]
 async fn firms_info_crawler_handler(
@@ -40,18 +40,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let caps = DesiredCapabilities::chrome();
 	let driver = WebDriver::new("http://localhost:9515", caps).await?;
 
-	let count_query_result =
-		sqlx::query_as!(FirmsCount, "SELECT count(*) AS count FROM two_gis_firms")
-			.fetch_one(&data.db)
-			.await;
-
-	if count_query_result.is_err() {
-		println!("Что-то пошло не так во время подсчета фирм");
-	}
-
-	let firms_count = count_query_result.unwrap().count.unwrap();
-
-	dbg!(&firms_count);
+	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
 
 	let category = sqlx::query_as!(
 		Category,
@@ -74,20 +63,11 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	dbg!(&start);
 
 	for j in start.clone()..=firms_count {
-		let firm = sqlx::query_as!(
-			TwoGisFirm,
-			"SELECT * FROM two_gis_firms ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
-			j
-		)
-		.fetch_one(&data.db)
-		.await
-		.unwrap();
-
+		let firm = Firm::get_firm(&data.db, j).await.unwrap();
 		let mut firms: Vec<SaveFirm> = Vec::new();
 
 		driver.goto(format!("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}", &firm.two_gis_firm_id.clone().unwrap())).await?;
-
-		tokio::time::sleep(Duration::from_secs(5)).await;
+		sleep(Duration::from_secs(5)).await;
 
 		// не запрашиваем информацию о закрытом
 		let err_block = driver
@@ -97,7 +77,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.inner_html()
 			.await?;
 
-		if err_block.contains("Филиал временно не работает") {
+		if err_block.contains("Филиал удалён из справочника")
+			|| err_block.contains("Филиал временно не работает")
+		{
 			continue;
 		}
 

@@ -24,7 +24,7 @@ async fn get_firms_handler(
 	let query_result = sqlx::query_as!(
 		ExtFirmWithOaiDescription, "SELECT a.firm_id, a.name, a.address, a.site, a.default_phone, a.description, b.oai_description_value FROM firms a 
 		JOIN oai_descriptions b ON a.firm_id = b.firm_id
-		ORDER BY a.firm_id
+		ORDER BY a.two_gis_firm_id
 	 	LIMIT $1 OFFSET $2",
 		limit as i32,
 		offset as i32

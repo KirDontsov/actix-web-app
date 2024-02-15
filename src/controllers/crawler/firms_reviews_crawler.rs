@@ -6,7 +6,7 @@ use crate::{
 };
 use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
-use tokio::time::Duration;
+use tokio::time::{sleep, Duration};
 
 #[get("/crawler/reviews")]
 async fn firms_reviews_crawler_handler(
@@ -37,15 +37,7 @@ async fn firms_reviews_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("4bb99137-6c90-42e6-8385-83c522cde804");
-	let count_query_result = sqlx::query_as!(FirmsCount, "SELECT count(*) AS count FROM firms")
-		.fetch_one(&data.db)
-		.await;
-
-	if count_query_result.is_err() {
-		println!("Что-то пошло не так во время подсчета фирм");
-	}
-
-	let firms_count = count_query_result.unwrap().count.unwrap();
+	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
@@ -53,28 +45,11 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	for j in start.clone()..=firms_count {
 		let caps = DesiredCapabilities::chrome();
 		let driver = WebDriver::new("http://localhost:9515", caps).await?;
-		// TODO: брать firms_copy
-		let firm = sqlx::query_as!(
-			Firm,
-			"SELECT * FROM firms ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
-			j
-		)
-		.fetch_one(&data.db)
-		.await
-		.unwrap();
-
+		let firm = Firm::get_firm(&data.db, j).await.unwrap();
 		let mut reviews: Vec<SaveReview> = Vec::new();
 
 		driver.goto(format!("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/reviews", &firm.two_gis_firm_id.clone().unwrap())).await?;
-
-		tokio::time::sleep(Duration::from_secs(5)).await;
-
-		// let mut not_confirmed_xpath;
-		let mut author_xpath;
-		let mut date_xpath;
-		let mut text_xpath;
-
-		let mut blocks: Vec<WebElement> = Vec::new();
+		sleep(Duration::from_secs(5)).await;
 
 		let no_reviews = driver
 			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
@@ -89,6 +64,13 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		{
 			continue;
 		}
+
+		// let mut not_confirmed_xpath;
+		let mut author_xpath;
+		let mut date_xpath;
+		let mut text_xpath;
+
+		let mut blocks: Vec<WebElement> = Vec::new();
 
 		// кол-во отзывов
 		let reviews_count = driver
