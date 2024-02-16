@@ -50,6 +50,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_oai_reviews_handler)
 		// images
 		.service(get_images_handler)
+		.service(mir_far_crawler_handler)
 		// chatgpt
 		.service(description_processing_handler)
 		.service(reviews_processing_handler);

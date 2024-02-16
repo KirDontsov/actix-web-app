@@ -78,32 +78,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			Ok(_) => println!("image saved successfully"),
 			Err(e) => println!("error while downloading image: {}", e),
 		}
-
-		// reviews.push(SaveReview {
-		// 	firm_id: firm.firm_id.clone(),
-		// 	two_gis_firm_id: firm.two_gis_firm_id.clone().unwrap(),
-		// 	author: author.clone(),
-		// 	date: date.clone(),
-		// 	text: text.replace("\n", " "),
-		// });
 	}
 
-	// запись в бд
-	// for review in reviews {
-	// let _ = sqlx::query_as!(
-	// 	Review,
-	// 	"INSERT INTO reviews (firm_id, two_gis_firm_id, author, date, text) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-	// 	review.firm_id,
-	// 	review.two_gis_firm_id,
-	// 	review.author,
-	// 	review.date,
-	// 	review.text,
-	// )
-	// .fetch_one(&data.db)
-	// .await;
-	// }
-
-	// println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());
 	println!("{}", "======");
 
 	driver.clone().quit().await?;
@@ -118,11 +94,6 @@ async fn download_image_to(url: &str, file_name: &str) -> Result<(), Box<dyn std
 	dbg!(&response.bytes().await?);
 	// Create a new file to write the downloaded image to
 	let mut file = File::create(file_name)?;
-
-	// Create a cursor that wraps the response body
-	// let mut content = Cursor::new(response.bytes().await?);
-	// Copy the content from the cursor to the file
-	// copy(&mut content, &mut file)?;
 
 	Ok(())
 }

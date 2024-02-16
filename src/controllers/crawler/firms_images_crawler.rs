@@ -58,38 +58,42 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.await?;
 		sleep(Duration::from_secs(5)).await;
 
-		let err_block = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
-			.first()
-			.await?
-			.inner_html()
-			.await?;
+		let main_block = match find_main_block(driver.clone()).await {
+			Ok(img_elem) => img_elem,
+			Err(e) => {
+				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+				dbg!(&counter);
+				println!("error while searching main block: {}", e);
+				"".to_string()
+			}
+		};
 
-		if err_block.contains("Филиал удалён из справочника")
-			|| err_block.contains("Филиал временно не работает")
-			|| err_block.contains("Добавьте сюда фотографий!")
+		if main_block.contains("Филиал удалён из справочника")
+			|| main_block.contains("Филиал временно не работает")
+			|| main_block.contains("Добавьте сюда фотографий!")
+			|| main_block.contains("")
 		{
 			continue;
 		}
 
 		let mut blocks: Vec<WebElement> = Vec::new();
 
-		// кол-во отзывов
-		let img_count = driver
-			.query(By::XPath("//*[contains(text(),'Отзывы')]/span"))
-			.or(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div"))
-			.first()
-			.await?
-			.inner_html()
-			.await?
-			.parse::<f32>()
-			.unwrap_or(0.0);
+		// кол-во фото
+		let img_count = match find_count_block(driver.clone()).await {
+			Ok(img_elem) => img_elem,
+			Err(e) => {
+				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+				dbg!(&counter);
+				println!("error while searching count block: {}", e);
+				0.0
+			}
+		};
 
 		if img_count == 0.0 {
 			continue;
 		}
 
-		let edge: i32 = ((if img_count > 500.0 { 100.0 } else { img_count }) / 12.0).ceil() as i32;
+		let edge: i32 = ((if img_count > 100.0 { 50.0 } else { img_count }) / 12.0).ceil() as i32;
 
 		// скролим в цикле
 		for _ in 0..edge {
@@ -192,4 +196,28 @@ pub async fn find_img(block: WebElement) -> Result<String, WebDriverError> {
 		.await?
 		.unwrap();
 	Ok(img)
+}
+
+pub async fn find_main_block(driver: WebDriver) -> Result<String, WebDriverError> {
+	let err_block = driver
+			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
+			.first()
+			.await?
+			.inner_html()
+			.await?;
+
+	Ok(err_block)
+}
+pub async fn find_count_block(driver: WebDriver) -> Result<f32, WebDriverError> {
+	let img_count = driver
+			.query(By::XPath("//*[contains(text(),'Фото')]/span"))
+			.or(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]"))
+			.first()
+			.await?
+			.inner_html()
+			.await?
+			.parse::<f32>()
+			.unwrap_or(0.0);
+
+	Ok(img_count)
 }
