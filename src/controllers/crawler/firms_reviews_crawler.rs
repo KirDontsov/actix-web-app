@@ -1,4 +1,5 @@
 use crate::{
+	api::Driver,
 	jwt_auth,
 	models::{Counter, Firm, FirmsCount, Review, SaveReview},
 	utils::{get_counter, update_counter},
@@ -40,11 +41,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
 
 	// получаем из базы начало счетчика
-	let start = get_counter(&data.db, &counter_id).await;
+	let start: i64 = get_counter(&data.db, &counter_id).await;
 
 	for j in start.clone()..=firms_count {
-		let caps = DesiredCapabilities::chrome();
-		let driver = WebDriver::new("http://localhost:9515", caps).await?;
+		let driver = <dyn Driver>::get_driver().await?;
 		let firm = Firm::get_firm(&data.db, j).await.unwrap();
 		let mut reviews: Vec<SaveReview> = Vec::new();
 

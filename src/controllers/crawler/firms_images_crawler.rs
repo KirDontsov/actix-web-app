@@ -1,4 +1,5 @@
 use crate::{
+	api::Driver,
 	jwt_auth,
 	models::{Firm, FirmsCount, Image},
 	utils::{get_counter, update_counter},
@@ -46,10 +47,11 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let start = get_counter(&data.db, &counter_id).await;
 
 	for j in start.clone()..=firms_count {
-		let caps = DesiredCapabilities::chrome();
-		let driver = WebDriver::new("http://localhost:9515", caps).await?;
+		let driver = <dyn Driver>::get_driver().await?;
 		let firm = Firm::get_firm(&data.db, j).await.unwrap();
+
 		println!("№ {}", &j);
+
 		driver
 			.goto(format!(
 				"https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/photos",

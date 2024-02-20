@@ -1,4 +1,5 @@
 use crate::{
+	api::Driver,
 	jwt_auth,
 	models::{Firm, FirmsCount, UpdateFirmDesc},
 	utils::{get_counter, update_counter},
@@ -37,8 +38,7 @@ async fn firms_description_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("7711da84-7d98-4072-aa35-b642c7ac0762");
-	let caps = DesiredCapabilities::chrome();
-	let driver = WebDriver::new("http://localhost:9515", caps).await?;
+	let driver = <dyn Driver>::get_driver().await?;
 
 	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
 

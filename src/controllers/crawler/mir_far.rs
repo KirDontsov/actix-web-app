@@ -1,4 +1,5 @@
 use crate::{
+	api::Driver,
 	jwt_auth,
 	models::{Counter, Firm, FirmsCount, Review, SaveReview},
 	utils::{get_counter, update_counter},
@@ -42,8 +43,7 @@ async fn mir_far_crawler_handler(
 }
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
-	let caps = DesiredCapabilities::chrome();
-	let driver = WebDriver::new("http://localhost:9515", caps).await?;
+	let driver = <dyn Driver>::get_driver().await?;
 
 	driver.goto("https://mirfar.com/catalog/fari-audi/").await?;
 
