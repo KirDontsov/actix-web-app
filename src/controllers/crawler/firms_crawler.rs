@@ -1,7 +1,7 @@
-use crate::{jwt_auth, models::TwoGisFirm, AppState};
+use crate::{api::Driver, jwt_auth, models::TwoGisFirm, AppState};
 use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
-use tokio::time::Duration;
+use tokio::time::{sleep, Duration};
 
 #[get("/crawler/firms")]
 async fn firms_crawler_handler(
@@ -18,12 +18,11 @@ async fn firms_crawler_handler(
 }
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
-	let caps = DesiredCapabilities::chrome();
-	let driver = WebDriver::new("http://localhost:9515", caps).await?;
+	let driver = <dyn Driver>::get_driver().await?;
 
 	driver.goto("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81?m=30.385039%2C59.980836%2F16.24").await?;
 
-	tokio::time::sleep(Duration::from_secs(1)).await;
+	sleep(Duration::from_secs(1)).await;
 
 	// кол-во организаций/13
 	for j in 0..255 {
@@ -31,7 +30,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let last = firms_elem.last().unwrap();
 		last.scroll_into_view().await?;
 		println!("страница: {}", j);
-		tokio::time::sleep(Duration::from_secs(1)).await;
+		sleep(Duration::from_secs(1)).await;
 
 		let mut firms = Vec::new();
 
@@ -112,7 +111,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		// переключение пагинации
 		for button_elem in button_elems {
 			button_elem.click().await?;
-			tokio::time::sleep(Duration::from_secs(5)).await;
+			sleep(Duration::from_secs(5)).await;
 		}
 	}
 

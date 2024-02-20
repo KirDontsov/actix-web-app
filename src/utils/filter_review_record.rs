@@ -1,4 +1,4 @@
-use crate::models::{FilteredReview, Review};
+use crate::models::{FilteredOAIReview, FilteredReview, OAIReview, Review};
 
 pub fn filter_review_record(review: &Review) -> FilteredReview {
 	FilteredReview {
@@ -7,6 +7,14 @@ pub fn filter_review_record(review: &Review) -> FilteredReview {
 		firm_id: review.firm_id.to_string(),
 		author: review.author.to_owned(),
 		date: review.date.to_owned(),
+		text: review.text.to_owned(),
+	}
+}
+
+pub fn filter_oai_review_record(review: &OAIReview) -> FilteredOAIReview {
+	FilteredOAIReview {
+		oai_review_id: review.oai_review_id.to_string(),
+		firm_id: review.firm_id.to_string(),
 		text: review.text.to_owned(),
 	}
 }
