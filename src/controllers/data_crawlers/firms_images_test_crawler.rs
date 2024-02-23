@@ -1,19 +1,10 @@
-use crate::{
-	api::Driver,
-	jwt_auth,
-	models::{Counter, Firm, FirmsCount, Review, SaveReview},
-	utils::{get_counter, update_counter},
-	AppState,
-};
+use crate::{api::Driver, AppState};
 use actix_web::{get, web, HttpResponse, Responder};
-use std::{
-	fs::File,
-	io::{copy, Cursor},
-};
+use std::fs::File;
 use thirtyfour::prelude::*;
-use thiserror::Error;
 use tokio::time::Duration;
 
+#[allow(unreachable_code)]
 #[get("/crawler/images_test")]
 async fn firms_images_test_crawler_handler(
 	data: web::Data<AppState>,
@@ -93,7 +84,7 @@ async fn download_image_to(url: &str, file_name: &str) -> Result<(), Box<dyn std
 	dbg!(&response);
 	dbg!(&response.bytes().await?);
 	// Create a new file to write the downloaded image to
-	let mut file = File::create(file_name)?;
+	let _ = File::create(file_name)?;
 
 	Ok(())
 }

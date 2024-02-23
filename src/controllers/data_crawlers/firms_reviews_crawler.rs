@@ -1,7 +1,6 @@
 use crate::{
 	api::Driver,
-	jwt_auth,
-	models::{Counter, Firm, FirmsCount, Review, SaveReview},
+	models::{Firm, FirmsCount, Review, SaveReview},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -9,6 +8,7 @@ use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 
+#[allow(unreachable_code)]
 #[get("/crawler/reviews")]
 async fn firms_reviews_crawler_handler(
 	data: web::Data<AppState>,

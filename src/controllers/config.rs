@@ -3,7 +3,7 @@ use actix_web::web;
 use crate::controllers::auth::*;
 use crate::controllers::categories::*;
 use crate::controllers::cities::*;
-use crate::controllers::crawler::*;
+use crate::controllers::data_crawlers::*;
 use crate::controllers::data_processing::*;
 use crate::controllers::firms::*;
 use crate::controllers::images::*;
@@ -28,6 +28,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(firms_description_crawler_handler)
 		.service(firms_images_crawler_handler)
 		.service(firms_images_test_crawler_handler)
+		.service(firms_prices_crawler_handler)
 		//user
 		.service(get_users_handler)
 		.service(get_user_handler)
