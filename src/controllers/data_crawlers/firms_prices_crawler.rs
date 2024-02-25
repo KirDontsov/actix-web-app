@@ -71,6 +71,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		if main_block.contains("Филиал удалён из справочника")
 			|| main_block.contains("Филиал временно не работает")
+			|| main_block.contains("Посмотреть на сайте")
 			|| main_block.contains("Добавьте сюда фотографий!")
 		{
 			continue;
@@ -128,6 +129,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				}
 			};
 
+			if &category_name == "" {
+				continue;
+			}
+
 			let category_value = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_19i46pu\")][{}]/div[2]", &category_count)).await {
 				Ok(elem) => elem,
 				Err(e) => {
@@ -138,9 +143,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				}
 			};
 
-			if &category_name == "" {
-				continue;
-			}
 			println!("Category №{}", &i);
 			println!("Firm id: {}", firm.firm_id.clone());
 			dbg!(&category_name);
@@ -181,6 +183,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				}
 			};
 
+				if &item_name == "" {
+					continue;
+				}
+
 				let item_value = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_8mqv20\")][{}]/div[2]", i)).await {
 				Ok(elem) => elem,
 				Err(e) => {
@@ -190,10 +196,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					"".to_string()
 				}
 			};
-
-				if &item_name == "" {
-					continue;
-				}
 
 				dbg!(&item_name);
 				dbg!(&item_value);
