@@ -173,6 +173,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				// потом прервать внутренний цикл
 				// перейдя к следующей категории вычесть число записанных в предыдущей категории, и продолжить запись со следующего айтема
 
+				if i > prices_count.ceil() as i32 {
+					continue;
+				}
+
 				let item_name = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_8mqv20\")][{}]/div[1]", i)).await {
 				Ok(elem) => elem,
 				Err(e) => {
