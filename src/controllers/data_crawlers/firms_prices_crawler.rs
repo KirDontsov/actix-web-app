@@ -138,7 +138,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				}
 			};
 
-			if &category_name == "" || &category_value == "" {
+			if &category_name == "" {
 				continue;
 			}
 			println!("Category №{}", &i);
@@ -191,7 +191,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				}
 			};
 
-				if &item_name == "" || &item_value == "" {
+				if &item_name == "" {
 					continue;
 				}
 
