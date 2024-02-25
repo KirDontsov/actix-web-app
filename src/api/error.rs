@@ -2,7 +2,7 @@ use actix_web::{body::BoxBody, http::StatusCode, HttpResponse, ResponseError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-pub type CustomResult<T> = Result<T, CustomError>;
+// pub type CustomResult<T> = Result<T, CustomError>;
 
 #[derive(Debug, Error, Clone, Serialize, Deserialize)]
 pub enum CustomError {

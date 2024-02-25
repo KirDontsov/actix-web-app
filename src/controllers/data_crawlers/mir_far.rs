@@ -1,19 +1,9 @@
-use crate::{
-	api::Driver,
-	jwt_auth,
-	models::{Counter, Firm, FirmsCount, Review, SaveReview},
-	utils::{get_counter, update_counter},
-	AppState,
-};
+use crate::{api::Driver, AppState};
 use actix_web::{get, web, HttpResponse, Responder};
-use std::{
-	fs::File,
-	io::{copy, Cursor},
-};
 use thirtyfour::prelude::*;
-use thiserror::Error;
 use tokio::time::{sleep, Duration};
 
+#[allow(unreachable_code)]
 #[get("/crawler/mir_far")]
 async fn mir_far_crawler_handler(
 	data: web::Data<AppState>,

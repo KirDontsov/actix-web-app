@@ -11,6 +11,7 @@ use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 use uuid::Uuid;
 
+#[allow(unreachable_code)]
 #[get("/crawler/images")]
 async fn firms_images_crawler_handler(
 	data: web::Data<AppState>,

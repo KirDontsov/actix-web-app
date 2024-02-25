@@ -38,6 +38,7 @@ struct OAIRequest {
 	messages: Vec<OAIMessage>,
 }
 
+#[allow(unreachable_code)]
 #[get("/processing/reviews")]
 async fn reviews_processing_handler(
 	data: web::Data<AppState>,
