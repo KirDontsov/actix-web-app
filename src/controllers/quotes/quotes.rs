@@ -1,6 +1,6 @@
 use crate::{
 	jwt_auth,
-	models::{AddQuoteSchema, FilterOptions, FilteredQuote, Quote, QuotesCount},
+	models::{AddQuoteSchema, Count, FilterOptions, FilteredQuote, Quote},
 	AppState,
 };
 use actix_web::{
@@ -21,6 +21,7 @@ async fn get_quotes_handler(
 ) -> impl Responder {
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+	let table = String::from("quotes");
 
 	let query_result = sqlx::query_as!(
 		Quote,
@@ -31,17 +32,7 @@ async fn get_quotes_handler(
 	.fetch_all(&data.db)
 	.await;
 
-	let count_query_result = sqlx::query_as!(QuotesCount, "SELECT count(*) AS count FROM quotes")
-		.fetch_one(&data.db)
-		.await;
-
-	if count_query_result.is_err() {
-		let message = "Что-то пошло не так во время подсчета пользователей";
-		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
-	}
-
-	let quote_count = count_query_result.unwrap();
+	let quotes_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	if query_result.is_err() {
 		let message = "Что-то пошло не так во время чтения пользователей";
@@ -55,7 +46,7 @@ async fn get_quotes_handler(
 		"status":  "success",
 		"data": json!({
 			"quotes": &quotes.into_iter().map(|quote| filter_quote_record(&quote)).collect::<Vec<FilteredQuote>>(),
-			"quotes_count": &quote_count.count.unwrap()
+			"quotes_count": &quotes_count
 		})
 	});
 

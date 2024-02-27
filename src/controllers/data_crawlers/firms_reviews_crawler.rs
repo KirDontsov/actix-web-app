@@ -1,6 +1,6 @@
 use crate::{
 	api::Driver,
-	models::{Firm, FirmsCount, Review, SaveReview},
+	models::{Count, Firm, Review, SaveReview},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -38,7 +38,9 @@ async fn firms_reviews_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("4bb99137-6c90-42e6-8385-83c522cde804");
-	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
+	let table = String::from("firms");
+
+	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start: i64 = get_counter(&data.db, &counter_id).await;

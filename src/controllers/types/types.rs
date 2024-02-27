@@ -1,5 +1,5 @@
 use crate::{
-	models::{FilterOptions, FilteredType, Type, TypesCount},
+	models::{Count, FilterOptions, FilteredType, Type},
 	AppState,
 };
 use actix_web::{
@@ -19,6 +19,7 @@ async fn get_types_handler(
 ) -> impl Responder {
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+	let table = String::from("types");
 
 	let query_result = sqlx::query_as!(
 		Type,
@@ -29,17 +30,7 @@ async fn get_types_handler(
 	.fetch_all(&data.db)
 	.await;
 
-	let count_query_result = sqlx::query_as!(TypesCount, "SELECT count(*) AS count FROM types")
-		.fetch_one(&data.db)
-		.await;
-
-	if count_query_result.is_err() {
-		let message = "Что-то пошло не так во время подсчета types";
-		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
-	}
-
-	let type_count = count_query_result.unwrap();
+	let types_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	if query_result.is_err() {
 		let message = "Что-то пошло не так во время чтения types";
@@ -53,7 +44,7 @@ async fn get_types_handler(
 		"status":  "success",
 		"data": json!({
 			"types": &types.into_iter().map(|type_item| filter_type_record(&type_item)).collect::<Vec<FilteredType>>(),
-			"types_count": &type_count.count.unwrap()
+			"types_count": &types_count
 		})
 	});
 

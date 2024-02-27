@@ -2,11 +2,6 @@ use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Deserialize, Debug)]
-pub struct ImageCount {
-	pub count: Option<i64>,
-}
-
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone, Default)]
 pub struct Image {

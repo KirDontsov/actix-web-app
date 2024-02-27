@@ -1,6 +1,4 @@
-use crate::models::{
-	ExtFilteredFirmWithOaiDescription, ExtFirmWithOaiDescription, FilteredFirm, Firm,
-};
+use crate::models::{ExtFilteredFirmWithOaiDescription, ExtFirmWithOaiDescription};
 
 pub fn filter_ext_firm_record(
 	firm: &ExtFirmWithOaiDescription,

@@ -15,11 +15,6 @@ pub struct TwoGisFirm {
 	pub updated_ts: Option<DateTime<Utc>>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct FirmsCount {
-	pub count: Option<i64>,
-}
-
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone, Default)]
 pub struct Firm {

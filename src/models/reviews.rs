@@ -13,11 +13,6 @@ pub struct Review {
 	pub text: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct ReviewsCount {
-	pub count: Option<i64>,
-}
-
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct SaveReview {
 	pub firm_id: uuid::Uuid,
@@ -36,13 +31,6 @@ pub struct FilteredReview {
 	pub author: Option<String>,
 	pub date: Option<String>,
 	pub text: Option<String>,
-}
-
-// TODO: сделать общим и переиспользовать
-#[derive(Deserialize, Debug)]
-pub struct ReviewsFilterOptions {
-	pub page: Option<usize>,
-	pub limit: Option<usize>,
 }
 
 #[allow(non_snake_case)]

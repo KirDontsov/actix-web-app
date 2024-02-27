@@ -1,7 +1,5 @@
 use crate::{
-	models::{
-		ExtFilteredFirmWithOaiDescription, ExtFirmWithOaiDescription, FilterOptions, FirmsCount,
-	},
+	models::{Count, ExtFilteredFirmWithOaiDescription, ExtFirmWithOaiDescription, FilterOptions},
 	utils::filter_firm_record::filter_ext_firm_record,
 	AppState,
 };
@@ -20,6 +18,7 @@ async fn get_firms_handler(
 ) -> impl Responder {
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+	let table = String::from("firms");
 
 	let query_result = sqlx::query_as!(
 		ExtFirmWithOaiDescription, "SELECT a.firm_id, a.name, a.address, a.site, a.default_phone, a.description, b.oai_description_value FROM firms a 
@@ -32,17 +31,7 @@ async fn get_firms_handler(
 	.fetch_all(&data.db)
 	.await;
 
-	let count_query_result = sqlx::query_as!(FirmsCount, "SELECT count(*) AS count FROM firms")
-		.fetch_one(&data.db)
-		.await;
-
-	if count_query_result.is_err() {
-		let message = "Что-то пошло не так во время подсчета пользователей";
-		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
-	}
-
-	let firm_count = count_query_result.unwrap();
+	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	if query_result.is_err() {
 		let message = "Что-то пошло не так во время чтения пользователей";
@@ -56,7 +45,7 @@ async fn get_firms_handler(
 		"status":  "success",
 		"data": json!({
 			"firms": &firms.into_iter().map(|firm| filter_ext_firm_record(&firm)).collect::<Vec<ExtFilteredFirmWithOaiDescription>>(),
-			"firms_count": &firm_count.count.unwrap()
+			"firms_count": &firms_count
 		})
 	});
 

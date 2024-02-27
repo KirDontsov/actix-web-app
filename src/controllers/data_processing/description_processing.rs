@@ -1,4 +1,4 @@
-use crate::models::{Firm, OAIDescription, ReviewsCount, UpdateFirmDesc};
+use crate::models::{Count, Firm, OAIDescription, UpdateFirmDesc};
 use crate::utils::{get_counter, update_counter};
 use crate::AppState;
 use actix_web::web::Buf;
@@ -70,16 +70,9 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let counter_id: String = String::from("5e4f8432-c1db-4980-9b63-127fd320cdde");
 	let oai_token = env::var("OPENAI_API_KEY").unwrap();
 	let auth_header_val = format!("Bearer {}", oai_token);
-	let count_query_result = sqlx::query_as!(ReviewsCount, "SELECT count(*) AS count FROM firms")
-		.fetch_one(&data.db)
-		.await;
+	let table = String::from("firms");
 
-	if count_query_result.is_err() {
-		println!("Что-то пошло не так во время подсчета отзывов");
-	}
-
-	let firms_count = count_query_result.unwrap().count.unwrap();
-
+	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
 	dbg!(&firms_count);
 
 	// получаем из базы начало счетчика

@@ -1,6 +1,6 @@
 use crate::{
 	jwt_auth,
-	models::{FilterOptions, FilteredUser, UpdateUserSchema, User, UsersCount},
+	models::{Count, FilterOptions, FilteredUser, UpdateUserSchema, User},
 	AppState,
 };
 use actix_web::{
@@ -24,6 +24,7 @@ async fn get_users_handler(
 ) -> impl Responder {
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+	let table = String::from("users");
 
 	let query_result = sqlx::query_as!(
 		User,
@@ -34,17 +35,7 @@ async fn get_users_handler(
 	.fetch_all(&data.db)
 	.await;
 
-	let count_query_result = sqlx::query_as!(UsersCount, "SELECT count(*) AS count FROM users")
-		.fetch_one(&data.db)
-		.await;
-
-	if count_query_result.is_err() {
-		let message = "Что-то пошло не так во время подсчета пользователей";
-		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
-	}
-
-	let user_count = count_query_result.unwrap();
+	let users_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	if query_result.is_err() {
 		let message = "Что-то пошло не так во время чтения пользователей";
@@ -58,7 +49,7 @@ async fn get_users_handler(
 		"status":  "success",
 		"data": json!({
 			"users": &users.into_iter().map(|user| filter_user_record(&user)).collect::<Vec<FilteredUser>>(),
-			"users_count": &user_count.count.unwrap()
+			"users_count": &users_count
 		})
 	});
 

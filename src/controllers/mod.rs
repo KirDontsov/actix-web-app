@@ -7,6 +7,7 @@ pub mod data_processing;
 pub mod firms;
 pub mod images;
 pub mod oai_reviews;
+pub mod prices;
 pub mod quotes;
 pub mod reviews;
 pub mod routes;

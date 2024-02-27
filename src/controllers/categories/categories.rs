@@ -1,5 +1,5 @@
 use crate::{
-	models::{CategoriesCount, Category, FilterOptions, FilteredCategory},
+	models::{Category, Count, FilterOptions, FilteredCategory},
 	AppState,
 };
 use actix_web::{
@@ -19,6 +19,7 @@ async fn get_categories_handler(
 ) -> impl Responder {
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+	let table = String::from("categories");
 
 	let query_result = sqlx::query_as!(
 		Category,
@@ -29,18 +30,7 @@ async fn get_categories_handler(
 	.fetch_all(&data.db)
 	.await;
 
-	let count_query_result =
-		sqlx::query_as!(CategoriesCount, "SELECT count(*) AS count FROM categories")
-			.fetch_one(&data.db)
-			.await;
-
-	if count_query_result.is_err() {
-		let message = "Что-то пошло не так во время подсчета categories";
-		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
-	}
-
-	let category_count = count_query_result.unwrap();
+	let category_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	if query_result.is_err() {
 		let message = "Что-то пошло не так во время чтения categories";
@@ -54,7 +44,7 @@ async fn get_categories_handler(
 		"status":  "success",
 		"data": json!({
 			"categories": &categories.into_iter().map(|category| filter_category_record(&category)).collect::<Vec<FilteredCategory>>(),
-			"categories_count": &category_count.count.unwrap()
+			"categories_count": &category_count
 		})
 	});
 

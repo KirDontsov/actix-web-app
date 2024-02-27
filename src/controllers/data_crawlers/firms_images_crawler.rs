@@ -1,7 +1,7 @@
 use crate::{
 	api::Driver,
 	jwt_auth,
-	models::{Firm, FirmsCount, Image},
+	models::{Count, Firm, Image},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -41,8 +41,9 @@ async fn firms_images_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("2a94ecc5-fb8d-4b4d-bb03-e3ee2eb708da");
+	let table = String::from("firms");
 
-	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
+	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;

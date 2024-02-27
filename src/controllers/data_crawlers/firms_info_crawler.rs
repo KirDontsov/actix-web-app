@@ -1,6 +1,6 @@
 use crate::{
 	api::Driver,
-	models::{Category, Firm, FirmsCount, SaveFirm, Type},
+	models::{Category, Count, Firm, SaveFirm, Type},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -38,9 +38,10 @@ async fn firms_info_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("55d7ef92-45ca-40df-8e88-4e1a32076367");
+	let table = String::from("firms");
 	let driver = <dyn Driver>::get_driver().await?;
 
-	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
+	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	let category = sqlx::query_as!(
 		Category,

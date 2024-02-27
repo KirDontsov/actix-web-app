@@ -1,5 +1,5 @@
 use crate::{
-	models::{CitiesCount, City, FilterOptions, FilteredCity},
+	models::{City, Count, FilterOptions, FilteredCity},
 	AppState,
 };
 use actix_web::{
@@ -19,6 +19,7 @@ async fn get_cities_handler(
 ) -> impl Responder {
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+	let table = String::from("cities");
 
 	let query_result = sqlx::query_as!(
 		City,
@@ -29,17 +30,7 @@ async fn get_cities_handler(
 	.fetch_all(&data.db)
 	.await;
 
-	let count_query_result = sqlx::query_as!(CitiesCount, "SELECT count(*) AS count FROM cities")
-		.fetch_one(&data.db)
-		.await;
-
-	if count_query_result.is_err() {
-		let message = "Что-то пошло не так во время подсчета cities";
-		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
-	}
-
-	let city_count = count_query_result.unwrap();
+	let city_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	if query_result.is_err() {
 		let message = "Что-то пошло не так во время чтения cities";
@@ -53,7 +44,7 @@ async fn get_cities_handler(
 		"status":  "success",
 		"data": json!({
 			"cities": &cities.into_iter().map(|city| filter_city_record(&city)).collect::<Vec<FilteredCity>>(),
-			"cities_count": &city_count.count.unwrap()
+			"cities_count": &city_count
 		})
 	});
 

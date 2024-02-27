@@ -8,6 +8,7 @@ use crate::controllers::data_processing::*;
 use crate::controllers::firms::*;
 use crate::controllers::images::*;
 use crate::controllers::oai_reviews::*;
+use crate::controllers::prices::*;
 use crate::controllers::quotes::*;
 use crate::controllers::reviews::*;
 use crate::controllers::routes::*;
@@ -52,6 +53,8 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// images
 		.service(get_images_handler)
 		.service(mir_far_crawler_handler)
+		// prices
+		.service(get_prices_handler)
 		// chatgpt
 		.service(description_processing_handler)
 		.service(reviews_processing_handler);

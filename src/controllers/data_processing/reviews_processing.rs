@@ -1,4 +1,4 @@
-use crate::models::{Firm, OAIReview, Review, ReviewsCount, SaveOAIReview};
+use crate::models::{Count, Firm, OAIReview, Review, SaveOAIReview};
 use crate::utils::{get_counter, update_counter};
 use crate::AppState;
 use actix_web::web::Buf;
@@ -74,16 +74,9 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let oai_token = env::var("OPENAI_API_KEY").unwrap();
 	let model = "gpt-3.5-turbo".to_string();
 	let auth_header_val = format!("Bearer {}", oai_token);
+	let table = String::from("firms");
 
-	let count_query_result = sqlx::query_as!(ReviewsCount, "SELECT count(*) AS count FROM firms")
-		.fetch_one(&data.db)
-		.await;
-
-	if count_query_result.is_err() {
-		println!("Что-то пошло не так во время подсчета отзывов");
-	}
-
-	let firms_count = count_query_result.unwrap().count.unwrap();
+	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
 	dbg!(&firms_count);
 
 	// получаем из базы начало счетчика

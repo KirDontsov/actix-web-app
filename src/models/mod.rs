@@ -8,6 +8,7 @@ pub mod oai_descriptions;
 pub mod prices;
 pub mod response;
 pub mod reviews;
+pub mod shared;
 pub mod types;
 
 pub use self::categories::*;
@@ -20,4 +21,5 @@ pub use self::oai_descriptions::*;
 pub use self::prices::*;
 pub use self::response::*;
 pub use self::reviews::*;
+pub use self::shared::*;
 pub use self::types::*;

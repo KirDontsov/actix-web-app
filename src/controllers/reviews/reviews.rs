@@ -1,5 +1,5 @@
 use crate::{
-	models::{FilteredReview, Review, ReviewsCount, ReviewsFilterOptions},
+	models::{Count, FilterOptions, FilteredReview, Review},
 	AppState,
 };
 use actix_web::{
@@ -15,13 +15,14 @@ use crate::utils::filter_review_record;
 #[get("/reviews/{id}")]
 async fn get_reviews_handler(
 	path: Path<Uuid>,
-	opts: web::Query<ReviewsFilterOptions>,
+	opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	let firm_id = &path.into_inner();
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+	let table = String::from("reviews");
 
 	let query_result = sqlx::query_as!(
 		Review,
@@ -33,21 +34,7 @@ async fn get_reviews_handler(
 	.fetch_all(&data.db)
 	.await;
 
-	let count_query_result = sqlx::query_as!(
-		ReviewsCount,
-		"SELECT count(*) AS count FROM reviews WHERE firm_id = $1",
-		firm_id
-	)
-	.fetch_one(&data.db)
-	.await;
-
-	if count_query_result.is_err() {
-		let message = "Что-то пошло не так во время подсчета пользователей";
-		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
-	}
-
-	let review_count = count_query_result.unwrap();
+	let reviews_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	if query_result.is_err() {
 		let message = "Что-то пошло не так во время чтения пользователей";
@@ -61,7 +48,7 @@ async fn get_reviews_handler(
 		"status":  "success",
 		"data": json!({
 			"reviews": &reviews.into_iter().map(|review| filter_review_record(&review)).collect::<Vec<FilteredReview>>(),
-			"reviews_count": &review_count.count.unwrap()
+			"reviews_count": &reviews_count
 		})
 	});
 
