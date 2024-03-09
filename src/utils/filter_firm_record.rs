@@ -5,6 +5,7 @@ pub fn filter_ext_firm_record(
 ) -> ExtFilteredFirmWithOaiDescription {
 	ExtFilteredFirmWithOaiDescription {
 		firm_id: firm.firm_id.to_string(),
+		category_id: firm.category_id.to_string(),
 		name: firm.name.to_owned(),
 		address: firm.address.to_owned(),
 		site: firm.site.to_owned(),

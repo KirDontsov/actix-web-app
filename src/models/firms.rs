@@ -22,6 +22,7 @@ pub struct Firm {
 	pub two_gis_firm_id: Option<String>,
 	pub category_id: Uuid,
 	pub type_id: Uuid,
+	pub city_id: Uuid,
 	pub name: Option<String>,
 	pub description: Option<String>,
 	pub address: Option<String>,
@@ -41,6 +42,7 @@ pub struct SaveFirm {
 	pub two_gis_firm_id: String,
 	pub category_id: Uuid,
 	pub type_id: Uuid,
+	pub city_id: Uuid,
 	pub name: String,
 	pub address: String,
 	// pub floor: String,
@@ -72,6 +74,9 @@ pub struct UpdateFirmDesc {
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone, Default)]
 pub struct ExtFirmWithOaiDescription {
 	pub firm_id: Uuid,
+	pub city_id: Uuid,
+	pub category_id: Uuid,
+	pub type_id: Uuid,
 	pub name: Option<String>,
 	pub address: Option<String>,
 	pub site: Option<String>,
@@ -84,6 +89,7 @@ pub struct ExtFirmWithOaiDescription {
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct ExtFilteredFirmWithOaiDescription {
 	pub firm_id: String,
+	pub category_id: String,
 	pub name: Option<String>,
 	pub address: Option<String>,
 	pub site: Option<String>,

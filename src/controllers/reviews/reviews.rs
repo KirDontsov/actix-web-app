@@ -22,7 +22,6 @@ async fn get_reviews_handler(
 	let firm_id = &path.into_inner();
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
-	let table = String::from("reviews");
 
 	let query_result = sqlx::query_as!(
 		Review,
@@ -34,7 +33,21 @@ async fn get_reviews_handler(
 	.fetch_all(&data.db)
 	.await;
 
-	let reviews_count = Count::count(&data.db, table).await.unwrap_or(0);
+	let count_query_result = sqlx::query_as!(
+		Count,
+		"SELECT count(*) AS count FROM reviews WHERE firm_id = $1",
+		firm_id
+	)
+	.fetch_one(&data.db)
+	.await;
+
+	if count_query_result.is_err() {
+		let message = "Что-то пошло не так во время подсчета пользователей";
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": message}));
+	}
+
+	let review_count = count_query_result.unwrap();
 
 	if query_result.is_err() {
 		let message = "Что-то пошло не так во время чтения пользователей";
@@ -48,7 +61,7 @@ async fn get_reviews_handler(
 		"status":  "success",
 		"data": json!({
 			"reviews": &reviews.into_iter().map(|review| filter_review_record(&review)).collect::<Vec<FilteredReview>>(),
-			"reviews_count": &reviews_count
+			"reviews_count": &review_count.count.unwrap()
 		})
 	});
 

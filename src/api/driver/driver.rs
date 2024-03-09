@@ -17,7 +17,7 @@ impl dyn Driver {
 				}
 			}),
 		)?;
-		let _ = caps.set_headless();
+		// let _ = caps.set_headless();
 		let _ = caps.add_chrome_arg("enable-automation");
 		let _ = caps.add_chrome_arg("--no-sandbox");
 		let _ = caps.add_chrome_arg("--disable-extensions");

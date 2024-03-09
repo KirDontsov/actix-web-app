@@ -7,6 +7,7 @@ use hyper::{header, Body, Client, Request};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use std::env;
+use tokio::time::{sleep, Duration};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct OAIMessage {
@@ -75,8 +76,11 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let model = "gpt-3.5-turbo".to_string();
 	let auth_header_val = format!("Bearer {}", oai_token);
 	let table = String::from("firms");
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 
-	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
+	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
+		.await
+		.unwrap_or(0);
 	dbg!(&firms_count);
 
 	// получаем из базы начало счетчика
@@ -192,18 +196,38 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 			.unwrap();
 
 		// response
-		let res = client.request(req).await?;
-		let body = hyper::body::aggregate(res).await?;
-		let json: OAIResponse = serde_json::from_reader(body.reader())?;
+		match tokio::time::timeout(Duration::from_secs(60 * 5), client.request(req)).await {
+			Ok(result) => match result {
+				Ok(response) => {
+					println!("Status: {}", response.status());
 
-		reviews.push(SaveOAIReview {
-			firm_id: firm.firm_id.clone(),
-			text: json.choices[0]
-				.message
-				.content
-				.clone()
-				.replace("XYZ", &firm_name),
-		});
+					let json: OAIResponse =
+						serde_json::from_reader(hyper::body::aggregate(response).await?.reader())?;
+
+					let review = json.choices.get(0).unwrap().message.content.clone();
+
+					if review == "" {
+						println!("Empty openai response {:?}", review);
+						continue;
+					}
+
+					reviews.push(SaveOAIReview {
+						firm_id: firm.firm_id.clone(),
+						text: review
+							.clone()
+							.replace("XYZ", &firm_name)
+							.replace("#", "")
+							.replace("*", ""),
+					});
+				}
+				Err(e) => {
+					println!("Network error: {:?}", e);
+				}
+			},
+			Err(_) => {
+				println!("Timeout: no response in 6000 milliseconds.");
+			}
+		};
 
 		// запись в бд
 		for review in reviews {

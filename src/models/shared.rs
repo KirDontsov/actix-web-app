@@ -11,3 +11,12 @@ pub struct FilterOptions {
 pub struct Count {
 	pub count: Option<i64>,
 }
+
+#[derive(Deserialize, Debug)]
+pub struct FilterExtOptions {
+	pub city_id: Option<String>,
+	pub category_id: Option<String>,
+	pub type_id: Option<String>,
+	pub page: Option<usize>,
+	pub limit: Option<usize>,
+}

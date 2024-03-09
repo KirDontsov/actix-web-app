@@ -1,4 +1,5 @@
 use sqlx::{Pool, Postgres};
+use uuid::Uuid;
 
 use crate::{api::CustomError, models::Count};
 
@@ -13,7 +14,50 @@ impl Count {
 
 		let result = count_query_result.unwrap().count.unwrap();
 
-		println!("{:?}", &result);
+		println!("Count result: {:?}", &result);
+
+		Ok(result)
+	}
+
+	pub async fn count_firms_by_category(
+		db: &Pool<Postgres>,
+		table_name: String,
+		category_id: Uuid,
+	) -> Result<i64, CustomError> {
+		let sql = format!(
+			"SELECT count(*) AS count FROM {} WHERE category_id = '{}'",
+			&table_name, &category_id
+		);
+		let count_query_result = sqlx::query_as::<_, Count>(&sql).fetch_one(db).await;
+
+		if count_query_result.is_err() {
+			println!("Что-то пошло не так во время запроса count {}", &table_name);
+		}
+
+		let result = count_query_result.unwrap().count.unwrap();
+
+		println!("Count result: {:?}", &result);
+
+		Ok(result)
+	}
+
+	pub async fn count_firms_by_city_category_type(
+		db: &Pool<Postgres>,
+		table_name: String,
+		city_id: Uuid,
+		category_id: Uuid,
+		type_id: Uuid,
+	) -> Result<i64, CustomError> {
+		let sql = format!("SELECT count(*) AS count FROM {} WHERE city_id = '{}' AND category_id = '{}' AND type_id = '{}'", &table_name, &city_id, &category_id, &type_id);
+		let count_query_result = sqlx::query_as::<_, Count>(&sql).fetch_one(db).await;
+
+		if count_query_result.is_err() {
+			println!("Что-то пошло не так во время запроса count {}", &table_name);
+		}
+
+		let result = count_query_result.unwrap().count.unwrap();
+
+		println!("Count result: {:?}", &result);
 
 		Ok(result)
 	}

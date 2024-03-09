@@ -6,7 +6,11 @@ impl Firm {
 	pub async fn get_firm(db: &Pool<Postgres>, n: i64) -> Result<Self, CustomError> {
 		let firm_query_result = sqlx::query_as!(
 			Firm,
-			"SELECT * FROM firms ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
+			"
+			SELECT * FROM firms
+			WHERE category_id = '3ebc7206-6fed-4ea7-a000-27a74e867c9a'
+			ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;
+			",
 			&n
 		)
 		.fetch_one(db)
