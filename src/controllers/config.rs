@@ -49,6 +49,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_types_handler)
 		// reviews
 		.service(get_reviews_handler)
+		.service(add_review_handler)
 		.service(get_oai_reviews_handler)
 		// images
 		.service(get_images_handler)

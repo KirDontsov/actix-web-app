@@ -16,7 +16,7 @@ pub struct Count {
 pub struct FilterExtOptions {
 	pub city_id: Option<String>,
 	pub category_id: Option<String>,
-	pub type_id: Option<String>,
+	// pub type_id: Option<String>,
 	pub page: Option<usize>,
 	pub limit: Option<usize>,
 }

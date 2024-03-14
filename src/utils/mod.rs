@@ -14,7 +14,7 @@ pub use self::filter_category_record::filter_category_record;
 pub use self::filter_city_record::filter_city_record;
 pub use self::filter_image_record::filter_image_record;
 pub use self::filter_quote_record::filter_quote_record;
-pub use self::filter_review_record::{filter_oai_review_record, filter_review_record};
+pub use self::filter_review_record::*;
 pub use self::filter_type_record::filter_type_record;
 pub use self::filter_user_record::filter_user_record;
 pub use self::prices::*;

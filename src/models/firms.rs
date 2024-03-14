@@ -76,7 +76,6 @@ pub struct ExtFirmWithOaiDescription {
 	pub firm_id: Uuid,
 	pub city_id: Uuid,
 	pub category_id: Uuid,
-	pub type_id: Uuid,
 	pub name: Option<String>,
 	pub address: Option<String>,
 	pub site: Option<String>,

@@ -73,7 +73,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let counter_id: String = String::from("5e4f8432-c1db-4980-9b63-127fd320cdde");
 	let uri = std::env::var("OPENAI_API_BASE").unwrap();
 	let oai_token = env::var("OPENAI_API_KEY").unwrap();
-	let model = "gpt-3.5-turbo".to_string();
+	let model = "gpt-3.5-turbo-0613".to_string();
 	let auth_header_val = format!("Bearer {}", oai_token);
 	let table = String::from("firms");
 	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
@@ -113,6 +113,10 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 		if oai_description.is_ok() {
 			println!("Already exists");
+			continue;
+		}
+		if firm_desc.clone() == "" {
+			println!("Empty description");
 			continue;
 		}
 		let preamble = format!("Вот описание ресторана которое ты должен проанализировать: {}
@@ -165,7 +169,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 					let json: OAIResponse =
 						serde_json::from_reader(hyper::body::aggregate(response).await?.reader())?;
-
+					dbg!(&json);
 					let desc = json.choices.get(0).unwrap().message.content.clone();
 
 					if desc == "" {
