@@ -23,13 +23,17 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_me_handler)
 		.service(logout_handler)
 		// parsers
-		.service(firms_crawler_handler)
-		.service(firms_info_crawler_handler)
-		.service(firms_reviews_crawler_handler)
-		.service(firms_description_crawler_handler)
-		.service(firms_images_crawler_handler)
-		.service(firms_images_test_crawler_handler)
-		.service(firms_prices_crawler_handler)
+		// .service(firms_crawler_handler)
+		// .service(firms_info_crawler_handler)
+		// .service(firms_reviews_crawler_handler)
+		// .service(firms_description_crawler_handler)
+		// .service(firms_images_crawler_handler)
+		// .service(firms_images_test_crawler_handler)
+		// .service(firms_prices_crawler_handler)
+		// processing
+		// .service(images_processing_handler)
+		// .service(reviews_processing_handler)
+		.service(description_processing_handler)
 		//user
 		.service(get_users_handler)
 		.service(get_user_handler)
@@ -55,10 +59,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_images_handler)
 		.service(mir_far_crawler_handler)
 		// prices
-		.service(get_prices_handler)
-		// chatgpt
-		.service(description_processing_handler)
-		.service(reviews_processing_handler);
+		.service(get_prices_handler);
 
 	conf.service(scope);
 }

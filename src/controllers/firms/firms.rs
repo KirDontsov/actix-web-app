@@ -1,7 +1,6 @@
 use crate::{
 	models::{
 		Count, ExtFilteredFirmWithOaiDescription, ExtFirmWithOaiDescription, FilterExtOptions,
-		FilterOptions,
 	},
 	utils::filter_firm_record::filter_ext_firm_record,
 	AppState,

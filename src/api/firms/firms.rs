@@ -8,7 +8,7 @@ impl Firm {
 			Firm,
 			"
 			SELECT * FROM firms
-			WHERE category_id = '3ebc7206-6fed-4ea7-a000-27a74e867c9a'
+			WHERE category_id = '565ad1cb-b891-4185-ac75-24ab3898cf22'
 			ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;
 			",
 			&n

@@ -42,7 +42,7 @@ async fn firms_images_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("2a94ecc5-fb8d-4b4d-bb03-e3ee2eb708da");
 	let table = String::from("firms");
-	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
+	let category_id = uuid::Uuid::parse_str("565ad1cb-b891-4185-ac75-24ab3898cf22").unwrap();
 
 	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
 		.await
@@ -59,7 +59,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		driver
 			.goto(format!(
-				"https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/photos",
+				"https://2gis.ru/spb/search/автосервисы/firm/{}/tab/photos",
 				&firm.two_gis_firm_id.clone().unwrap()
 			))
 			.await?;
@@ -78,7 +78,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		if main_block.contains("Филиал удалён из справочника")
 			|| main_block.contains("Филиал временно не работает")
 			|| main_block.contains("Добавьте сюда фотографий!")
-			|| main_block.contains("")
 		{
 			continue;
 		}
@@ -95,6 +94,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				0.0
 			}
 		};
+		dbg!(&img_count);
 
 		if img_count == 0.0 {
 			continue;
@@ -111,9 +111,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		}
 
 		let dir_name = format!("{}", &firm.firm_id.clone());
-		let _ = create_dir(Path::new(format!("output/{}", &dir_name).as_str()))?;
+		let _ = create_dir(Path::new(format!("output/images/{}", &dir_name).as_str()))?;
 
-		for (i, block) in blocks.clone().into_iter().enumerate() {
+		for (_i, block) in blocks.clone().into_iter().enumerate() {
 			let block_content = block.inner_html().await?;
 
 			if block_content.contains("Добавить фото") {
@@ -121,7 +121,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			}
 			// Записываем в бд этот img_id, firm_id и можно сгенерить Alt для него
 			let img_id = Uuid::new_v4();
-			let file_name = format!("{}.jpg", &img_id);
+			let file_name = format!("{}.png", &img_id);
 
 			let img = match find_img(block).await {
 				Ok(img_elem) => {
@@ -160,7 +160,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				.first()
 				.await?
 				.screenshot(Path::new(
-					format!("{}/{}/{}", "output", dir_name, &file_name).as_str(),
+					format!("{}/{}/{}", "output/images", dir_name, &file_name).as_str(),
 				))
 				.await
 			{
