@@ -62,24 +62,8 @@ pub struct Quote {
 	pub updated_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct QuotesCount {
-	pub count: Option<i64>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct FilterOptions {
-	pub page: Option<usize>,
-	pub limit: Option<usize>,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct AddQuoteSchema {
 	pub text: String,
 	pub author: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct UsersCount {
-	pub count: Option<i64>,
 }

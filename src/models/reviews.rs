@@ -11,11 +11,9 @@ pub struct Review {
 	pub date: Option<String>,
 	pub rating: Option<String>,
 	pub text: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct ReviewsCount {
-	pub count: Option<i64>,
+	pub parsed: Option<bool>,
+	#[serde(rename = "createdTs")]
+	pub created_ts: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
@@ -25,7 +23,17 @@ pub struct SaveReview {
 	pub author: String,
 	pub date: String,
 	pub text: String,
-	// pub rating: String,
+	pub rating: String,
+}
+
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct AddReview {
+	pub firm_id: uuid::Uuid,
+	// pub two_gis_firm_id: String,
+	pub author: String,
+	// pub date: String,
+	pub text: String,
+	pub rating: String,
 }
 
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
@@ -36,13 +44,16 @@ pub struct FilteredReview {
 	pub author: Option<String>,
 	pub date: Option<String>,
 	pub text: Option<String>,
+	pub rating: Option<String>,
 }
 
-// TODO: сделать общим и переиспользовать
-#[derive(Deserialize, Debug)]
-pub struct ReviewsFilterOptions {
-	pub page: Option<usize>,
-	pub limit: Option<usize>,
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct FilteredAddReview {
+	pub review_id: String,
+	pub firm_id: String,
+	pub author: Option<String>,
+	pub date: Option<String>,
+	pub text: Option<String>,
 }
 
 #[allow(non_snake_case)]

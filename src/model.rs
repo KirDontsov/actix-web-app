@@ -66,8 +66,3 @@ pub struct FilterOptions {
 	pub page: Option<usize>,
 	pub limit: Option<usize>,
 }
-
-#[derive(Deserialize, Debug)]
-pub struct UsersCount {
-	pub count: Option<i64>,
-}

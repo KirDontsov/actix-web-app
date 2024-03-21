@@ -1,10 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
-pub struct CitiesCount {
-	pub count: Option<i64>,
-}
-
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct City {

@@ -1,6 +1,6 @@
 use crate::{
 	api::Driver,
-	models::{Firm, FirmsCount, PriceCategory, PriceItem},
+	models::{Count, Firm, PriceCategory, PriceItem},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -39,8 +39,12 @@ async fn firms_prices_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("5116c826-87a8-4881-ba9c-19c0068b3c62");
+	let table = String::from("firms");
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 
-	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
+	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
+		.await
+		.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
@@ -71,6 +75,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		if main_block.contains("Филиал удалён из справочника")
 			|| main_block.contains("Филиал временно не работает")
+			|| main_block.contains("Посмотреть на сайте")
 			|| main_block.contains("Добавьте сюда фотографий!")
 		{
 			continue;
@@ -128,6 +133,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				}
 			};
 
+			if &category_name == "" {
+				continue;
+			}
+
 			let category_value = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_19i46pu\")][{}]/div[2]", &category_count)).await {
 				Ok(elem) => elem,
 				Err(e) => {
@@ -138,9 +147,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				}
 			};
 
-			if &category_name == "" {
-				continue;
-			}
 			println!("Category №{}", &i);
 			println!("Firm id: {}", firm.firm_id.clone());
 			dbg!(&category_name);
@@ -171,17 +177,11 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				// потом прервать внутренний цикл
 				// перейдя к следующей категории вычесть число записанных в предыдущей категории, и продолжить запись со следующего айтема
 
-				let item_name = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_8mqv20\")][{}]/div[1]", i)).await {
-				Ok(elem) => elem,
-				Err(e) => {
-					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
-					dbg!(&counter);
-					println!("error while searching image: {}", e);
-					"".to_string()
+				if i > prices_count.ceil() as i32 {
+					continue;
 				}
-			};
 
-				let item_value = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_8mqv20\")][{}]/div[2]", i)).await {
+				let item_name = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_8mqv20\")][{}]/div[1]", i)).await {
 				Ok(elem) => elem,
 				Err(e) => {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
@@ -194,6 +194,16 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				if &item_name == "" {
 					continue;
 				}
+
+				let item_value = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_8mqv20\")][{}]/div[2]", i)).await {
+				Ok(elem) => elem,
+				Err(e) => {
+					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+					dbg!(&counter);
+					println!("error while searching image: {}", e);
+					"".to_string()
+				}
+			};
 
 				dbg!(&item_name);
 				dbg!(&item_value);

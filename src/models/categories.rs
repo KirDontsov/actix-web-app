@@ -8,11 +8,6 @@ pub struct Category {
 	pub abbreviation: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct CategoriesCount {
-	pub count: Option<i64>,
-}
-
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct SaveCategory {

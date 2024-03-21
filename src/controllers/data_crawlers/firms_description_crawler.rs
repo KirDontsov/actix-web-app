@@ -1,7 +1,7 @@
 use crate::{
 	api::Driver,
 	jwt_auth,
-	models::{Firm, FirmsCount, UpdateFirmDesc},
+	models::{Count, Firm, UpdateFirmDesc},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -39,9 +39,13 @@ async fn firms_description_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("7711da84-7d98-4072-aa35-b642c7ac0762");
+	let table = String::from("firms");
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 	let driver = <dyn Driver>::get_driver().await?;
 
-	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
+	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
+		.await
+		.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
@@ -107,12 +111,13 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		dbg!(&info_blocks.len());
 
-		let firm_desc = info_blocks[0]
-			.query(By::XPath(&desc_block_xpath))
-			.first()
-			.await?
-			.text()
-			.await?;
+		let firm_desc = match find_block(driver.clone(), desc_block_xpath).await {
+			Ok(elem) => elem,
+			Err(e) => {
+				println!("error while searching firm_site block: {}", e);
+				"".to_string()
+			}
+		};
 
 		firms.push(UpdateFirmDesc {
 			firm_id: firm.firm_id.clone(),
@@ -141,4 +146,15 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	driver.clone().quit().await?;
 
 	Ok(())
+}
+
+pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
+	let block = driver
+		.query(By::XPath(&xpath))
+		.first()
+		.await?
+		.text()
+		.await?;
+
+	Ok(block)
 }

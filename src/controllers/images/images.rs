@@ -1,5 +1,5 @@
 use crate::{
-	models::{FilteredImage, Image, ImageCount},
+	models::{Count, FilteredImage, Image},
 	utils::filter_image_record::filter_image_record,
 	AppState,
 };
@@ -14,22 +14,13 @@ use uuid::Uuid;
 #[get("/images/{id}")]
 async fn get_images_handler(path: Path<Uuid>, data: web::Data<AppState>) -> impl Responder {
 	let firm_id = &path.into_inner();
+	let table = String::from("images");
 
 	let query_result = sqlx::query_as!(Image, "SELECT * FROM images WHERE firm_id = $1", firm_id)
 		.fetch_all(&data.db)
 		.await;
 
-	let count_query_result = sqlx::query_as!(ImageCount, "SELECT count(*) AS count FROM images")
-		.fetch_one(&data.db)
-		.await;
-
-	if count_query_result.is_err() {
-		let message = "Что-то пошло не так во время подсчета пользователей";
-		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
-	}
-
-	let image_count = count_query_result.unwrap();
+	let images_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	if query_result.is_err() {
 		let message = "Что-то пошло не так во время чтения пользователей";
@@ -43,7 +34,7 @@ async fn get_images_handler(path: Path<Uuid>, data: web::Data<AppState>) -> impl
 		"status":  "success",
 		"data": json!({
 			"images": &images.into_iter().map(|image| filter_image_record(&image)).collect::<Vec<FilteredImage>>(),
-			"images_count": &image_count.count.unwrap()
+			"images_count": &images_count
 		})
 	});
 

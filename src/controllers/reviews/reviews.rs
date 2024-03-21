@@ -1,21 +1,21 @@
 use crate::{
-	models::{FilteredReview, Review, ReviewsCount, ReviewsFilterOptions},
+	models::{AddReview, Count, FilterOptions, FilteredReview, Review},
 	AppState,
 };
 use actix_web::{
-	get,
+	get, post,
 	web::{self, Path},
 	HttpResponse, Responder,
 };
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::utils::filter_review_record;
+use crate::utils::{filter_add_review_record, filter_review_record};
 
 #[get("/reviews/{id}")]
 async fn get_reviews_handler(
 	path: Path<Uuid>,
-	opts: web::Query<ReviewsFilterOptions>,
+	opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
@@ -34,7 +34,7 @@ async fn get_reviews_handler(
 	.await;
 
 	let count_query_result = sqlx::query_as!(
-		ReviewsCount,
+		Count,
 		"SELECT count(*) AS count FROM reviews WHERE firm_id = $1",
 		firm_id
 	)
@@ -93,4 +93,38 @@ async fn get_review_handler(
 	});
 
 	HttpResponse::Ok().json(json_response)
+}
+
+#[post("/review/{id}")]
+async fn add_review_handler(
+	body: web::Json<AddReview>,
+	data: web::Data<AppState>,
+) -> impl Responder {
+	let firm_id = uuid::Uuid::parse_str(body.firm_id.to_string().as_str()).unwrap();
+	dbg!(&firm_id);
+	let query_result = sqlx::query_as!(
+		Review,
+		"INSERT INTO reviews (firm_id, text, author, rating, parsed) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+		firm_id,
+		body.text.to_string().to_lowercase(),
+		body.author.to_string().to_lowercase(),
+		body.rating.to_string().to_lowercase(),
+		false
+	)
+	.fetch_one(&data.db)
+	.await;
+
+	match query_result {
+		Ok(review) => {
+			let review_response = serde_json::json!({"status": "success","data": serde_json::json!({
+				"review": filter_add_review_record(&review)
+			})});
+
+			return HttpResponse::Ok().json(review_response);
+		}
+		Err(e) => {
+			return HttpResponse::InternalServerError()
+				.json(serde_json::json!({"status": "error","message": format!("{:?}", e)}));
+		}
+	}
 }

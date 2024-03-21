@@ -1,4 +1,4 @@
-use crate::models::{Firm, OAIReview, Review, ReviewsCount, SaveOAIReview};
+use crate::models::{Count, Firm, OAIReview, Review, SaveOAIReview};
 use crate::utils::{get_counter, update_counter};
 use crate::AppState;
 use actix_web::web::Buf;
@@ -7,6 +7,7 @@ use hyper::{header, Body, Client, Request};
 use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use std::env;
+use tokio::time::{sleep, Duration};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct OAIMessage {
@@ -54,6 +55,7 @@ async fn reviews_processing_handler(
 				}
 				Err(e) => {
 					println!("{:?}", e);
+					let _ = sleep(Duration::from_secs(20)).await;
 					needs_to_restart = true;
 					Err(e)
 				}
@@ -74,16 +76,12 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let oai_token = env::var("OPENAI_API_KEY").unwrap();
 	let model = "gpt-3.5-turbo".to_string();
 	let auth_header_val = format!("Bearer {}", oai_token);
+	let table = String::from("firms");
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 
-	let count_query_result = sqlx::query_as!(ReviewsCount, "SELECT count(*) AS count FROM firms")
-		.fetch_one(&data.db)
-		.await;
-
-	if count_query_result.is_err() {
-		println!("Что-то пошло не так во время подсчета отзывов");
-	}
-
-	let firms_count = count_query_result.unwrap().count.unwrap();
+	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
+		.await
+		.unwrap_or(0);
 	dbg!(&firms_count);
 
 	// получаем из базы начало счетчика
@@ -101,7 +99,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 		let oai_review = sqlx::query_as!(
 			OAIReview,
-			r#"SELECT * FROM oai_reviews_copy WHERE firm_id = $1;"#,
+			r#"SELECT * FROM oai_reviews WHERE firm_id = $1;"#,
 			&firm.firm_id
 		)
 		.fetch_one(&data.db)
@@ -145,24 +143,20 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		let preamble = format!("
 		Вот отзывы которые ты должен проанализировать: {}
 
-		Напиши большую статью, на основе этих отзывов об автосервисе {}, 
-		важно, чтобы текст был понятен 18-летним девушкам и парням, которые не разбираются в автосервисах, но без упоминания слова - Статья
+		Напиши большую статью, на основе этих отзывов о ресторане {}, 
+		важно, чтобы текст был понятен 18-летним девушкам и парням, которые не разбираются в ресторанах, но без упоминания слова - Статья
 
-		Подробно опиши в этой статье: какие виды работ обсуждают люди, 
-		что из этих работ было сделано хорошо, а что плохо,
-		обманывают ли в этом автосервисе или нет.
-		Например, если об этом говорят в отзывах:
-		В отзывах обсуждаются следующие услуги: 
-		1. Кузовной ремонт - плохое качество
-		2. Мастера - отзывчивые
+		Подробно опиши в этой статье: что обсуждают люди в отзывах, 
+		что в ресторане хорошо, а что плохо,
+		если в ресторане есть детская комната, что пишут о ней,
+		какие блюда рекомендуют, а какие лучше не заказывать.
 
-		Выведи нумерованный список: плюсов и минусов если человек обратится в этот автосервис для ремонта своего автомобиля.
-		Например, если об этом говорят в отзывах: 
+		Выведи нумерованный список: плюсов и минусов ресторана, например:
 		Плюсы
-		1. Хорошо чинят машины
-		2. Хорошо красят
+		1. Если об этом говорят в отзывах: Дружелюбный персонал
+		2. Если об этом говорят в отзывах: Уютная атмосфера
 		Минусы
-		1. Далеко от центра города
+		1. Если об этом говорят в отзывах: Громкая музыка
 
 		Важно - подсчитай и выведи не нумерованным списком сумму положительных и сумму отрицательных отзывов,
 		Например: 
@@ -171,13 +165,11 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 		Сделай выводы, на основе плюсов и минусов организации, количества положительных и отрицательных отзывов.
 		Например:
-		У организации больше положительных отзывов, укажи что рейтинг организации хороший, и объясни почему.
+		У ресторана больше положительных отзывов, укажи что рейтинг ресторана хороший, и объясни почему.
 		Или например:
-		У организации поровну положительных и отрицательных отзывов, укажи что рейтинг организации удовлетворительный, и объясни почему.
+		У ресторана поровну положительных и отрицательных отзывов, укажи что рейтинг ресторана удовлетворительный, и объясни почему.
 		Или например:
-		У организации больше отрицательных отзывов, укажи что рейтинг организации не удовлетворительный, и объясни почему.
-		
-		В конце текста укажи: *Пожалуйста, обратите внимание, что данный обзор сформирован нейросетью и может быть не точным*
+		У ресторана больше отрицательных отзывов, укажи что рейтинг ресторана не удовлетворительный, и объясни почему.
 		", &reviews_string.chars().take(3800).collect::<String>(), &firm_name);
 
 		let second_message = OAIMessage {
@@ -199,24 +191,44 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 			.unwrap();
 
 		// response
-		let res = client.request(req).await?;
-		let body = hyper::body::aggregate(res).await?;
-		let json: OAIResponse = serde_json::from_reader(body.reader())?;
+		match tokio::time::timeout(Duration::from_secs(60 * 5), client.request(req)).await {
+			Ok(result) => match result {
+				Ok(response) => {
+					println!("Status: {}", response.status());
 
-		reviews.push(SaveOAIReview {
-			firm_id: firm.firm_id.clone(),
-			text: json.choices[0]
-				.message
-				.content
-				.clone()
-				.replace("XYZ", &firm_name),
-		});
+					let json: OAIResponse =
+						serde_json::from_reader(hyper::body::aggregate(response).await?.reader())?;
+
+					let review = json.choices.get(0).unwrap().message.content.clone();
+
+					if review == "" {
+						println!("Empty openai response {:?}", review);
+						continue;
+					}
+
+					reviews.push(SaveOAIReview {
+						firm_id: firm.firm_id.clone(),
+						text: review
+							.clone()
+							.replace("XYZ", &firm_name)
+							.replace("#", "")
+							.replace("*", ""),
+					});
+				}
+				Err(e) => {
+					println!("Network error: {:?}", e);
+				}
+			},
+			Err(_) => {
+				println!("Timeout: no response in 6000 milliseconds.");
+			}
+		};
 
 		// запись в бд
 		for review in reviews {
 			let x = sqlx::query_as!(
 				OAIReview,
-				r#"INSERT INTO oai_reviews_copy (firm_id, text) VALUES ($1, $2) RETURNING *"#,
+				r#"INSERT INTO oai_reviews (firm_id, text) VALUES ($1, $2) RETURNING *"#,
 				review.firm_id,
 				review.text,
 			)
@@ -231,3 +243,37 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 	Ok(())
 }
+
+// Вот отзывы которые ты должен проанализировать: {}
+
+// 		Напиши большую статью, на основе этих отзывов об автосервисе {},
+// 		важно, чтобы текст был понятен 18-летним девушкам и парням, которые не разбираются в автосервисах, но без упоминания слова - Статья
+
+// 		Подробно опиши в этой статье: какие виды работ обсуждают люди,
+// 		что из этих работ было сделано хорошо, а что плохо,
+// 		обманывают ли в этом автосервисе или нет.
+// 		Например, если об этом говорят в отзывах:
+// 		В отзывах обсуждаются следующие услуги:
+// 		1. Кузовной ремонт - плохое качество
+// 		2. Мастера - отзывчивые
+
+// 		Выведи нумерованный список: плюсов и минусов если человек обратится в этот автосервис для ремонта своего автомобиля.
+// 		Например, если об этом говорят в отзывах:
+// 		Плюсы
+// 		1. Хорошо чинят машины
+// 		2. Хорошо красят
+// 		Минусы
+// 		1. Далеко от центра города
+
+// 		Важно - подсчитай и выведи не нумерованным списком сумму положительных и сумму отрицательных отзывов,
+// 		Например:
+// 		Положительных отзывов - 15
+// 		Отрицательных отзывов - 5
+
+// 		Сделай выводы, на основе плюсов и минусов организации, количества положительных и отрицательных отзывов.
+// 		Например:
+// 		У организации больше положительных отзывов, укажи что рейтинг организации хороший, и объясни почему.
+// 		Или например:
+// 		У организации поровну положительных и отрицательных отзывов, укажи что рейтинг организации удовлетворительный, и объясни почему.
+// 		Или например:
+// 		У организации больше отрицательных отзывов, укажи что рейтинг организации не удовлетворительный, и объясни почему.

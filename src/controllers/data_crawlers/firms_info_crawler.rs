@@ -1,6 +1,6 @@
 use crate::{
 	api::Driver,
-	models::{Category, Firm, FirmsCount, SaveFirm, Type},
+	models::{Category, Count, Firm, SaveFirm, TwoGisFirm, Type},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -38,47 +38,59 @@ async fn firms_info_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("55d7ef92-45ca-40df-8e88-4e1a32076367");
+	let table = String::from("firms");
 	let driver = <dyn Driver>::get_driver().await?;
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 
-	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
+	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
+		.await
+		.unwrap_or(0);
 
 	let category = sqlx::query_as!(
 		Category,
-		"SELECT * FROM categories WHERE abbreviation = 'car_service';",
+		"SELECT * FROM categories WHERE abbreviation = 'restaurants';",
 	)
 	.fetch_one(&data.db)
 	.await
 	.unwrap();
 
-	let type_item = sqlx::query_as!(
-		Type,
-		"SELECT * FROM types WHERE abbreviation = 'kuzovnoj_remont';",
-	)
-	.fetch_one(&data.db)
-	.await
-	.unwrap();
+	let type_item = sqlx::query_as!(Type, "SELECT * FROM types WHERE abbreviation = 'cafe';",)
+		.fetch_one(&data.db)
+		.await
+		.unwrap();
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
 	dbg!(&start);
 
 	for j in start.clone()..=firms_count {
-		let firm = Firm::get_firm(&data.db, j).await.unwrap();
+		let firm = sqlx::query_as!(
+			TwoGisFirm,
+			"SELECT * FROM two_gis_firms ORDER BY two_gis_firm_id LIMIT 1 OFFSET $1;",
+			j
+		)
+		.fetch_one(&data.db)
+		.await
+		.unwrap();
+
 		let mut firms: Vec<SaveFirm> = Vec::new();
 
-		driver.goto(format!("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}", &firm.two_gis_firm_id.clone().unwrap())).await?;
+		driver.goto(format!("https://2gis.ru/spb/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/firm/{}", &firm.two_gis_firm_id.clone().unwrap())).await?;
 		sleep(Duration::from_secs(5)).await;
 
 		// не запрашиваем информацию о закрытом
-		let err_block = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div/div"))
-			.first()
-			.await?
-			.inner_html()
-			.await?;
+		let main_block = match find_main_block(driver.clone()).await {
+			Ok(img_elem) => img_elem,
+			Err(e) => {
+				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+				dbg!(&counter);
+				println!("error while searching main block: {}", e);
+				"".to_string()
+			}
+		};
 
-		if err_block.contains("Филиал удалён из справочника")
-			|| err_block.contains("Филиал временно не работает")
+		if main_block.contains("Филиал удалён из справочника")
+			|| main_block.contains("Филиал временно не работает")
 		{
 			continue;
 		}
@@ -136,36 +148,29 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			site_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[last()]", info_block_number);
 		}
 
-		let firm_address = info_blocks[0]
-			.query(By::XPath(&address_xpath))
-			.first()
-			.await?
-			.text()
-			.await?;
-
-		let firm_phone = match info_blocks[0]
-			.query(By::XPath(&phone_xpath))
-			.first()
-			.await?
-			.attr("href")
-			.await?
-		{
-			Some(tel) => tel.replace("tel:", ""),
-			_ => "-".to_string(),
+		let firm_address = match find_text_block(driver.clone(), address_xpath).await {
+			Ok(elem) => elem,
+			Err(e) => {
+				println!("error while searching firm_address block: {}", e);
+				"".to_string()
+			}
 		};
 
-		let firm_site = info_blocks[0]
-			.query(By::XPath(&site_xpath))
-			.first()
-			.await?
-			.text()
-			.await?;
+		let firm_phone = match find_tag_block(driver.clone(), phone_xpath).await {
+			Ok(elem) => elem.replace("tel:", ""),
+			Err(e) => {
+				println!("error while searching firm_phone block: {}", e);
+				"".to_string()
+			}
+		};
 
-		// let firm_email = firm_elem
-		// 	.find(By::XPath(&email_xpath))
-		// 	.await?
-		// 	.inner_html()
-		// 	.await?;
+		let firm_site = match find_text_block(driver.clone(), site_xpath).await {
+			Ok(elem) => elem,
+			Err(e) => {
+				println!("error while searching firm_site block: {}", e);
+				"".to_string()
+			}
+		};
 
 		firms.push(SaveFirm {
 			two_gis_firm_id: firm.two_gis_firm_id.clone().unwrap(),
@@ -175,6 +180,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			default_phone: firm_phone.clone(),
 			site: firm_site.clone(),
 			type_id: type_item.type_id.clone(),
+			city_id: uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap(),
 			// default_email: firm_email.clone(),
 		});
 
@@ -205,4 +211,38 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	driver.quit().await?;
 
 	Ok(())
+}
+
+pub async fn find_main_block(driver: WebDriver) -> Result<String, WebDriverError> {
+	let block = driver
+			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
+			.first()
+			.await?
+			.inner_html()
+			.await?;
+
+	Ok(block)
+}
+
+pub async fn find_text_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
+	let block = driver
+		.query(By::XPath(&xpath))
+		.first()
+		.await?
+		.text()
+		.await?;
+
+	Ok(block)
+}
+
+pub async fn find_tag_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
+	let block = driver
+		.query(By::XPath(&xpath))
+		.first()
+		.await?
+		.attr("href")
+		.await?
+		.unwrap_or("".to_string());
+
+	Ok(block)
 }

@@ -6,7 +6,7 @@ use tokio::time::{sleep, Duration};
 #[get("/crawler/firms")]
 async fn firms_crawler_handler(
 	data: web::Data<AppState>,
-	_: jwt_auth::JwtMiddleware,
+	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	let _ = crawler(data).await;
 
@@ -20,7 +20,10 @@ async fn firms_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let driver = <dyn Driver>::get_driver().await?;
 
-	driver.goto("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81?m=30.385039%2C59.980836%2F16.24").await?;
+	// автосервисы
+	// driver.goto("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81?m=30.385039%2C59.980836%2F16.24").await?;
+	// рестораны
+	driver.goto("https://2gis.ru/spb/search/%D1%80%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B%20%D1%81%D0%BF%D0%B1?m=30.332289%2C59.91734%2F11.04").await?;
 
 	sleep(Duration::from_secs(1)).await;
 
@@ -57,21 +60,20 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.concat()
 			.to_string();
 
-			let firm_name = firm_elem
-				.query(By::XPath(&name_xpath))
-				.first()
-				.await?
-				.inner_html()
-				.await?;
+			let firm_name = match find_block(driver.clone(), name_xpath).await {
+				Ok(elem) => elem,
+				Err(e) => {
+					println!("error while searching name block: {}", e);
+					"".to_string()
+				}
+			};
 
-			let Some(firm_id) = firm_elem
-				.query(By::XPath(&firm_id_xpath))
-				.first()
-				.await?
-				.attr("href")
-				.await?
-			else {
-				panic!("no href!");
+			let firm_id = match find_id_block(driver.clone(), firm_id_xpath).await {
+				Ok(elem) => elem,
+				Err(e) => {
+					println!("error while searching id block: {}", e);
+					"".to_string()
+				}
 			};
 
 			// TODO: попробовать заменить на regexp
@@ -118,4 +120,27 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	driver.quit().await?;
 
 	Ok(())
+}
+
+pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
+	let err_block = driver
+		.query(By::XPath(&xpath.to_owned()))
+		.first()
+		.await?
+		.inner_html()
+		.await?;
+
+	Ok(err_block)
+}
+
+pub async fn find_id_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
+	let err_block = driver
+		.query(By::XPath(&xpath.to_owned()))
+		.first()
+		.await?
+		.attr("href")
+		.await?
+		.unwrap_or("".to_string());
+
+	Ok(err_block)
 }

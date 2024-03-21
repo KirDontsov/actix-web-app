@@ -1,6 +1,6 @@
 use crate::{
 	api::Driver,
-	models::{Firm, FirmsCount, Review, SaveReview},
+	models::{Count, Firm, Review, SaveReview},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -38,7 +38,13 @@ async fn firms_reviews_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("4bb99137-6c90-42e6-8385-83c522cde804");
-	let firms_count = FirmsCount::count_firm(&data.db).await.unwrap_or(0);
+	let table = String::from("firms");
+	// рестораны
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
+
+	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
+		.await
+		.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start: i64 = get_counter(&data.db, &counter_id).await;
@@ -69,6 +75,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let mut author_xpath;
 		let mut date_xpath;
 		let mut text_xpath;
+		let mut rating_xpath;
 
 		let mut blocks: Vec<WebElement> = Vec::new();
 
@@ -122,27 +129,47 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			author_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/span/span[1]/span", count );
 			date_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/div", count );
 			text_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[3]/div/a", count );
+			rating_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div/div/div[2]/div/div[1]/span", count );
 
-			let author = block
-				.query(By::XPath(&author_xpath))
-				.first()
-				.await?
-				.inner_html()
-				.await?;
+			let author = match find_block(driver.clone(), author_xpath).await {
+				Ok(elem) => elem,
+				Err(e) => {
+					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+					dbg!(&counter);
+					println!("error while searching author block: {}", e);
+					"".to_string()
+				}
+			};
 
-			let date = block
-				.query(By::XPath(&date_xpath))
-				.first()
-				.await?
-				.inner_html()
-				.await?;
+			let date = match find_block(driver.clone(), date_xpath).await {
+				Ok(elem) => elem,
+				Err(e) => {
+					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+					dbg!(&counter);
+					println!("error while searching date block: {}", e);
+					"".to_string()
+				}
+			};
 
-			let text = block
-				.query(By::XPath(&text_xpath))
-				.first()
-				.await?
-				.inner_html()
-				.await?;
+			let text = match find_block(driver.clone(), text_xpath).await {
+				Ok(elem) => elem,
+				Err(e) => {
+					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+					dbg!(&counter);
+					println!("error while searching text block: {}", e);
+					"".to_string()
+				}
+			};
+
+			let rating = match find_blocks(driver.clone(), rating_xpath).await {
+				Ok(elem) => elem.to_string(),
+				Err(e) => {
+					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+					dbg!(&counter);
+					println!("error while searching text block: {}", e);
+					"".to_string()
+				}
+			};
 
 			reviews.push(SaveReview {
 				firm_id: firm.firm_id.clone(),
@@ -150,6 +177,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				author: author.clone(),
 				date: date.clone(),
 				text: text.replace("\n", " "),
+				rating,
 			});
 		}
 
@@ -157,12 +185,14 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		for review in reviews {
 			let _ = sqlx::query_as!(
 				Review,
-				"INSERT INTO reviews (firm_id, two_gis_firm_id, author, date, text) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+				"INSERT INTO reviews (firm_id, two_gis_firm_id, author, date, text, rating, parsed) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
 				review.firm_id,
 				review.two_gis_firm_id,
 				review.author,
 				review.date,
 				review.text,
+				review.rating,
+				true
 			)
 			.fetch_one(&data.db)
 			.await;
@@ -178,4 +208,20 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	}
 
 	Ok(())
+}
+
+pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
+	let block = driver
+		.query(By::XPath(&xpath))
+		.first()
+		.await?
+		.inner_html()
+		.await?;
+
+	Ok(block)
+}
+
+pub async fn find_blocks(driver: WebDriver, xpath: String) -> Result<usize, WebDriverError> {
+	let length = driver.query(By::XPath(&xpath)).all().await?.len();
+	Ok(length)
 }
