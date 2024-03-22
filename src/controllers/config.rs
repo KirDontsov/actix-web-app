@@ -46,8 +46,10 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_firms_handler)
 		.service(get_firm_handler)
 		// cities
+		.service(get_city_handler)
 		.service(get_cities_handler)
 		// categories
+		.service(get_category_handler)
 		.service(get_categories_handler)
 		// types
 		.service(get_types_handler)
