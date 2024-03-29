@@ -40,21 +40,27 @@ async fn firms_description_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("7711da84-7d98-4072-aa35-b642c7ac0762");
 	let table = String::from("firms");
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
 	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
+	let city = "moscow";
 	let driver = <dyn Driver>::get_driver().await?;
 
-	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
-		.await
-		.unwrap_or(0);
+	let firms_count =
+		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+			.await
+			.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
 
 	for j in start.clone()..=firms_count {
-		let firm = Firm::get_firm(&data.db, j).await.unwrap();
+		let firm =
+			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+				.await
+				.unwrap();
 		let mut firms: Vec<UpdateFirmDesc> = Vec::new();
 
-		driver.goto(format!("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/info", &firm.two_gis_firm_id.clone().unwrap())).await?;
+		driver.goto(format!("https://2gis.ru/{}/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/info", &city, &firm.two_gis_firm_id.clone().unwrap())).await?;
 		sleep(Duration::from_secs(5)).await;
 
 		// не запрашиваем информацию о закрытом

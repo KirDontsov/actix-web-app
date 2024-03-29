@@ -38,13 +38,10 @@ async fn firms_info_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("55d7ef92-45ca-40df-8e88-4e1a32076367");
-	let table = String::from("firms");
+	let table = String::from("two_gis_firms");
 	let driver = <dyn Driver>::get_driver().await?;
-	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 
-	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
-		.await
-		.unwrap_or(0);
+	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	let category = sqlx::query_as!(
 		Category,
@@ -75,7 +72,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		let mut firms: Vec<SaveFirm> = Vec::new();
 
-		driver.goto(format!("https://2gis.ru/spb/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/firm/{}", &firm.two_gis_firm_id.clone().unwrap())).await?;
+		driver.goto(format!("https://2gis.ru/moscow/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/firm/{}", &firm.two_gis_firm_id.clone().unwrap())).await?;
 		sleep(Duration::from_secs(5)).await;
 
 		// не запрашиваем информацию о закрытом
@@ -137,7 +134,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			phone_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]/div[last()]/div/a", info_block_number, 4);
 			site_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]", info_block_number, 5);
 		}
-		dbg!(extra_block.contains("Показать телефон") || extra_block.contains("Показать телефоны"));
+
 		// если нет телефона и сайта
 		if !(extra_block.contains("Показать телефон") || extra_block.contains("Показать телефоны"))
 		{
@@ -180,7 +177,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			default_phone: firm_phone.clone(),
 			site: firm_site.clone(),
 			type_id: type_item.type_id.clone(),
-			city_id: uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap(),
+			city_id: uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap(),
 			// default_email: firm_email.clone(),
 		});
 
@@ -188,8 +185,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		for firm in firms {
 			let _ = sqlx::query_as!(
 				Firm,
-				"INSERT INTO firms (two_gis_firm_id, category_id, type_id, name, address, default_phone, site) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+				"INSERT INTO firms (two_gis_firm_id, city_id, category_id, type_id, name, address, default_phone, site) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
 				firm.two_gis_firm_id,
+				firm.city_id,
 				firm.category_id,
 				firm.type_id,
 				firm.name,
