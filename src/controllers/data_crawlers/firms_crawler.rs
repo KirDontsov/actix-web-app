@@ -19,11 +19,13 @@ async fn firms_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let driver = <dyn Driver>::get_driver().await?;
+	let city = "moscow";
 
 	// автосервисы
 	// driver.goto("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81?m=30.385039%2C59.980836%2F16.24").await?;
 	// рестораны
-	driver.goto("https://2gis.ru/spb/search/%D1%80%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B%20%D1%81%D0%BF%D0%B1?m=30.332289%2C59.91734%2F11.04").await?;
+	let url = format!("https://2gis.ru/{}/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/rubricId/164?m=37.62017%2C55.753466%2F11", &city);
+	driver.goto(url).await?;
 
 	sleep(Duration::from_secs(1)).await;
 
@@ -76,9 +78,11 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				}
 			};
 
+			let split_target = format!("/{}/firm/", &city);
+
 			// TODO: попробовать заменить на regexp
 			let url_part_one = *firm_id
-				.split("/spb/firm/")
+				.split(&split_target)
 				.collect::<Vec<&str>>()
 				.get_mut(1)
 				.unwrap_or(&mut "-?");

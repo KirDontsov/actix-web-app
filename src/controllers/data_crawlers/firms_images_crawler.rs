@@ -42,24 +42,29 @@ async fn firms_images_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("2a94ecc5-fb8d-4b4d-bb03-e3ee2eb708da");
 	let table = String::from("firms");
-	let category_id = uuid::Uuid::parse_str("565ad1cb-b891-4185-ac75-24ab3898cf22").unwrap();
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 
-	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
-		.await
-		.unwrap_or(0);
+	let firms_count =
+		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+			.await
+			.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
 
 	for j in start.clone()..=firms_count {
 		let driver = <dyn Driver>::get_driver().await?;
-		let firm = Firm::get_firm(&data.db, j).await.unwrap();
+		let firm =
+			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+				.await
+				.unwrap();
 
 		println!("№ {}", &j);
 
 		driver
 			.goto(format!(
-				"https://2gis.ru/spb/search/автосервисы/firm/{}/tab/photos",
+				"https://2gis.ru/moscow/search/рестораны/firm/{}/tab/photos",
 				&firm.two_gis_firm_id.clone().unwrap()
 			))
 			.await?;

@@ -77,11 +77,13 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let model = "gpt-3.5-turbo".to_string();
 	let auth_header_val = format!("Bearer {}", oai_token);
 	let table = String::from("firms");
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
 	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 
-	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
-		.await
-		.unwrap_or(0);
+	let firms_count =
+		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+			.await
+			.unwrap_or(0);
 	dbg!(&firms_count);
 
 	// получаем из базы начало счетчика
@@ -90,7 +92,9 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	for j in start.clone()..firms_count {
 		println!("Firm: {:?}", j + 1);
 
-		let firm = Firm::get_firm(&data.db, j).await?;
+		let firm =
+			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+				.await?;
 
 		let firm_id = &firm.firm_id.clone();
 		let firm_name = &firm.name.clone().unwrap();

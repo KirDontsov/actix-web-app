@@ -27,10 +27,11 @@ async fn get_firms_handler(
 	let table = String::from("firms");
 
 	let query_result = sqlx::query_as!(
-		ExtFirmWithOaiDescription, "SELECT a.firm_id, a.city_id, a.category_id, a.name, a.address, a.site, a.default_phone, a.description, b.oai_description_value FROM firms a 
+		ExtFirmWithOaiDescription, "SELECT a.firm_id, a.city_id, a.category_id, a.name, a.address, a.site, a.default_phone, a.description, b.oai_description_value FROM firms a
 		LEFT JOIN oai_descriptions b ON a.firm_id = b.firm_id
 		WHERE city_id = $1
 		AND category_id = $2
+		AND b.oai_description_value IS NOT NULL
 		ORDER BY a.two_gis_firm_id
 	 	LIMIT $3 OFFSET $4",
 		city_id,
@@ -68,7 +69,8 @@ async fn get_firms_handler(
 async fn get_firm_handler(path: Path<Uuid>, data: web::Data<AppState>) -> impl Responder {
 	let firm_id = &path.into_inner();
 
-	let firm = sqlx::query_as!(ExtFirmWithOaiDescription, "SELECT a.firm_id, a.city_id, a.category_id, a.name, a.address, a.site, a.default_phone, a.description, b.oai_description_value FROM firms a 
+	let firm = sqlx::query_as!(ExtFirmWithOaiDescription, 
+		"SELECT a.firm_id, a.city_id, a.category_id, a.name, a.address, a.site, a.default_phone, a.description, b.oai_description_value FROM firms a
 		LEFT JOIN oai_descriptions b ON a.firm_id = b.firm_id
 		WHERE a.firm_id = $1", firm_id)
 	.fetch_one(&data.db)
