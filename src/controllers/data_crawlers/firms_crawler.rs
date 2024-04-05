@@ -22,9 +22,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let city = "moscow";
 
 	// автосервисы
-	// driver.goto("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81?m=30.385039%2C59.980836%2F16.24").await?;
+	let url = format!("https://2gis.ru/{}/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/rubricId/9041/37.716023%2C55.779159?m=37.62017%2C55.753466%2F11", &city);
 	// рестораны
-	let url = format!("https://2gis.ru/{}/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/rubricId/164?m=37.62017%2C55.753466%2F11", &city);
+	// let url = format!("https://2gis.ru/{}/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/rubricId/164?m=37.62017%2C55.753466%2F11", &city);
 	driver.goto(url).await?;
 
 	sleep(Duration::from_secs(1)).await;

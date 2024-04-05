@@ -173,7 +173,6 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 					let json: OAIResponse =
 						serde_json::from_reader(hyper::body::aggregate(response).await?.reader())?;
-					dbg!(&json);
 					let desc = json.choices.get(0).unwrap().message.content.clone();
 
 					if desc == "" {

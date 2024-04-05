@@ -45,16 +45,19 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	let category = sqlx::query_as!(
 		Category,
-		"SELECT * FROM categories WHERE abbreviation = 'restaurants';",
+		"SELECT * FROM categories WHERE abbreviation = 'car_services';",
 	)
 	.fetch_one(&data.db)
 	.await
 	.unwrap();
 
-	let type_item = sqlx::query_as!(Type, "SELECT * FROM types WHERE abbreviation = 'cafe';",)
-		.fetch_one(&data.db)
-		.await
-		.unwrap();
+	let type_item = sqlx::query_as!(
+		Type,
+		"SELECT * FROM types WHERE abbreviation = 'shinomontazh';",
+	)
+	.fetch_one(&data.db)
+	.await
+	.unwrap();
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
@@ -72,7 +75,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		let mut firms: Vec<SaveFirm> = Vec::new();
 
-		driver.goto(format!("https://2gis.ru/moscow/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/firm/{}", &firm.two_gis_firm_id.clone().unwrap())).await?;
+		driver.goto(format!("https://2gis.ru/moscow/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}", &firm.two_gis_firm_id.clone().unwrap())).await?;
 		sleep(Duration::from_secs(5)).await;
 
 		// не запрашиваем информацию о закрытом
@@ -88,6 +91,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		if main_block.contains("Филиал удалён из справочника")
 			|| main_block.contains("Филиал временно не работает")
+			|| main_block.contains("Скоро открытие")
 		{
 			continue;
 		}

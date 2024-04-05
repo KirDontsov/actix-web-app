@@ -41,7 +41,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("7711da84-7d98-4072-aa35-b642c7ac0762");
 	let table = String::from("firms");
 	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
+	let category_id = uuid::Uuid::parse_str("565ad1cb-b891-4185-ac75-24ab3898cf22").unwrap();
 	let city = "moscow";
 	let driver = <dyn Driver>::get_driver().await?;
 
@@ -60,7 +60,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				.unwrap();
 		let mut firms: Vec<UpdateFirmDesc> = Vec::new();
 
-		driver.goto(format!("https://2gis.ru/{}/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/info", &city, &firm.two_gis_firm_id.clone().unwrap())).await?;
+		let url = format!("https://2gis.ru/{}/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/info",&city, &firm.two_gis_firm_id.clone().unwrap());
+
+		driver.goto(url).await?;
 		sleep(Duration::from_secs(5)).await;
 
 		// не запрашиваем информацию о закрытом
@@ -73,6 +75,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		if err_block.contains("Филиал удалён из справочника")
 			|| err_block.contains("Филиал временно не работает")
+			|| err_block.contains("Скоро открытие")
 		{
 			continue;
 		}
