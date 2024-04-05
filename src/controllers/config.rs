@@ -28,7 +28,6 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// .service(firms_reviews_crawler_handler)
 		// .service(firms_description_crawler_handler)
 		// .service(firms_images_crawler_handler)
-		// .service(firms_images_test_crawler_handler)
 		// .service(firms_prices_crawler_handler)
 		// processing
 		// .service(images_processing_handler)

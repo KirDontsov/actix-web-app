@@ -39,22 +39,47 @@ async fn firms_reviews_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("4bb99137-6c90-42e6-8385-83c522cde804");
 	let table = String::from("firms");
-	// рестораны
-	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let category_id = uuid::Uuid::parse_str("565ad1cb-b891-4185-ac75-24ab3898cf22").unwrap();
+	let city = "moscow";
 
-	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
-		.await
-		.unwrap_or(0);
+	let firms_count =
+		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+			.await
+			.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start: i64 = get_counter(&data.db, &counter_id).await;
+	dbg!(&start);
+
+	let driver = <dyn Driver>::get_driver().await?;
 
 	for j in start.clone()..=firms_count {
-		let driver = <dyn Driver>::get_driver().await?;
-		let firm = Firm::get_firm(&data.db, j).await.unwrap();
+		println!("№: {}", &j + 1);
+		let firm =
+			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+				.await
+				.unwrap();
 		let mut reviews: Vec<SaveReview> = Vec::new();
 
-		driver.goto(format!("https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/reviews", &firm.two_gis_firm_id.clone().unwrap())).await?;
+		// проверка на дубликат
+		let existed_reviews = sqlx::query_as!(
+			Review,
+			r#"SELECT * FROM reviews WHERE firm_id = $1;"#,
+			&firm.firm_id
+		)
+		.fetch_one(&data.db)
+		.await;
+
+		dbg!(&existed_reviews);
+
+		if existed_reviews.is_ok() {
+			println!("{}", &firm.firm_id);
+			println!("Already exists");
+			continue;
+		}
+
+		driver.goto(format!("https://2gis.ru/{}/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/reviews", &city, &firm.two_gis_firm_id.clone().unwrap())).await?;
 		sleep(Duration::from_secs(5)).await;
 
 		let no_reviews = driver
@@ -67,6 +92,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		if no_reviews.contains("Нет отзывов")
 			|| no_reviews.contains("Филиал удалён из справочника")
 			|| no_reviews.contains("Филиал временно не работает")
+			|| no_reviews.contains("Скоро открытие")
 		{
 			continue;
 		}
@@ -114,6 +140,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			let block_content = block.inner_html().await?;
 
 			if block_content.contains("Неподтвержденные отзывы")
+				|| block_content.contains("Все отзывы")
 				|| block_content.contains("Загрузить еще")
 				|| block_content.contains("С ответами")
 				|| block_content.contains("Люди говорят")
@@ -121,6 +148,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				|| block_content.contains("оценки")
 				|| block_content.contains("оценок")
 				|| block_content.contains("оценка")
+				|| block_content.contains("ответ")
 				|| block_content.contains("/5")
 			{
 				continue;
@@ -196,16 +224,16 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			)
 			.fetch_one(&data.db)
 			.await;
+
+			dbg!(&review);
 		}
 		// обновляем в базе счетчик
 		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 
-		println!("№: {}", &j + 1);
 		println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());
 		println!("{}", "======");
-
-		driver.clone().quit().await?;
 	}
+	driver.clone().quit().await?;
 
 	Ok(())
 }
