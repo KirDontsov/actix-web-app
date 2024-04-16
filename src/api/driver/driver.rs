@@ -7,24 +7,25 @@ impl dyn Driver {
 		let mut caps = DesiredCapabilities::chrome();
 
 		// без загрузки изображений
-		// caps.add_chrome_option(
-		// 	"prefs",
-		// 	serde_json::json!({
-		// 		"profile.default_content_settings": {
-		// 			"images": 2
-		// 		},
-		// 		"profile.managed_default_content_settings": {
-		// 			"images": 2
-		// 		}
-		// 	}),
-		// )?;
+		caps.insert_browser_option(
+			"prefs",
+			serde_json::json!({
+				"profile.default_content_settings": {
+					"images": 2
+				},
+				"profile.managed_default_content_settings": {
+					"images": 2
+				}
+			}),
+		)?;
 		// // let _ = caps.set_headless();
-		let _ = caps.add_chrome_arg("enable-automation");
-		let _ = caps.add_chrome_arg("--no-sandbox");
-		let _ = caps.add_chrome_arg("--disable-extensions");
-		let _ = caps.add_chrome_arg("--dns-prefetch-disable");
-		let _ = caps.add_chrome_arg("--disable-gpu");
-		let _ = caps.add_chrome_arg("enable-features=NetworkServiceInProcess");
+		let _ = caps.set_page_load_strategy(PageLoadStrategy::Eager)?;
+		let _ = caps.add_arg("enable-automation");
+		let _ = caps.add_arg("--no-sandbox");
+		let _ = caps.add_arg("--disable-extensions");
+		let _ = caps.add_arg("--dns-prefetch-disable");
+		let _ = caps.add_arg("--disable-gpu");
+		let _ = caps.add_arg("enable-features=NetworkServiceInProcess");
 
 		// firefox
 		// let _ = caps.set_page_load_strategy(PageLoadStrategy::None)?;
