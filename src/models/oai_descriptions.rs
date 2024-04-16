@@ -12,3 +12,10 @@ pub struct OAIDescription {
 	#[serde(rename = "updatedTs")]
 	pub updated_ts: Option<DateTime<Utc>>,
 }
+
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct FilteredOAIDescription {
+	pub oai_description_id: String,
+	pub firm_id: String,
+	pub oai_description_value: Option<String>,
+}

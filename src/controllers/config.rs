@@ -8,6 +8,7 @@ use crate::controllers::data_processing::*;
 use crate::controllers::firms::*;
 use crate::controllers::images::*;
 use crate::controllers::oai_reviews::*;
+use crate::controllers::oai_descriptions::*;
 use crate::controllers::prices::*;
 use crate::controllers::quotes::*;
 use crate::controllers::reviews::*;
@@ -56,6 +57,8 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_reviews_handler)
 		.service(add_review_handler)
 		.service(get_oai_reviews_handler)
+		// description
+		.service(get_oai_description_by_firm_handler)
 		// images
 		.service(get_images_handler)
 		.service(mir_far_crawler_handler)

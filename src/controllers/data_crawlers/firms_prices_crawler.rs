@@ -40,24 +40,46 @@ async fn firms_prices_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("5116c826-87a8-4881-ba9c-19c0068b3c62");
 	let table = String::from("firms");
-	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let category_id = uuid::Uuid::parse_str("565ad1cb-b891-4185-ac75-24ab3898cf22").unwrap();
+	let city = "moscow";
 
-	let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
-		.await
-		.unwrap_or(0);
+	let firms_count =
+		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+			.await
+			.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
+	let driver = <dyn Driver>::get_driver().await?;
 
 	for j in start.clone()..=firms_count {
-		let driver = <dyn Driver>::get_driver().await?;
-		let firm = Firm::get_firm(&data.db, j).await.unwrap();
+		let firm =
+			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+				.await
+				.unwrap();
 
 		println!("№ {}", &j);
 
+		// проверка на дубликат
+		let existed_prices = sqlx::query_as!(
+			PriceItem,
+			r#"SELECT * FROM prices_items WHERE firm_id = $1;"#,
+			&firm.firm_id
+		)
+		.fetch_one(&data.db)
+		.await;
+
+		if existed_prices.is_ok() {
+			println!("{}", &firm.firm_id);
+			println!("Already exists");
+			continue;
+		}
+
 		driver
 			.goto(format!(
-				"https://2gis.ru/spb/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/prices",
+				"https://2gis.ru/{}/search/автосервисы/firm/{}/tab/prices",
+				&city,
 				&firm.two_gis_firm_id.clone().unwrap()
 			))
 			.await?;
@@ -81,8 +103,31 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			continue;
 		}
 
+		let different_catalogue = match check_the_element(driver.clone(), "_183lbryc").await {
+			Ok(elem) => elem,
+			Err(e) => {
+				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+				dbg!(&counter);
+				println!("error while searching _183lbryc: {}", e);
+				vec![]
+			}
+		};
+
+		let ads_catalogue = match check_the_element(driver.clone(), "_rixun1").await {
+			Ok(elem) => elem,
+			Err(e) => {
+				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+				dbg!(&counter);
+				println!("error while searching _rixun1: {}", e);
+				vec![]
+			}
+		};
+
+		if different_catalogue.len() > 0 || ads_catalogue.len() > 0 {
+			continue;
+		}
+
 		let mut categories_blocks: Vec<WebElement> = Vec::new();
-		let mut items_blocks: Vec<WebElement> = Vec::new();
 
 		// кол-во цен
 		let prices_count = match find_count_block(driver.clone()).await {
@@ -99,23 +144,42 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			continue;
 		}
 
-		let edge: i32 = ((if prices_count > 500.0 {
-			500.0
-		} else {
-			prices_count
-		}) / 12.0)
-			.ceil() as i32;
+		let edge = (prices_count / 20.0).ceil() as i32;
+
+		dbg!(&prices_count);
+		dbg!(&edge);
 
 		// скролим в цикле
 		for _ in 0..edge {
-			let blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div")).all().await?;
+			let blocks = match find_elements_by_class(driver.clone(), "_8mqv20").await {
+				Ok(elem) => elem,
+				Err(e) => {
+					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+					dbg!(&counter);
+					println!("error while searching category: {}", e);
+					vec![]
+				}
+			};
+
+			let first = blocks.first().unwrap();
 			let last = blocks.last().unwrap();
+
 			last.scroll_into_view().await?;
 			sleep(Duration::from_secs(2)).await;
+
+			first.scroll_into_view().await?;
+			sleep(Duration::from_secs(1)).await;
 		}
 
-		categories_blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_19i46pu\")]")).all().await?;
-		items_blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_8mqv20\")]")).all().await?;
+		categories_blocks = match find_elements_by_class(driver.clone(), "_19i46pu").await {
+			Ok(elem) => elem,
+			Err(e) => {
+				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+				dbg!(&counter);
+				println!("error while searching category: {}", e);
+				vec![]
+			}
+		};
 
 		let mut total_count = 1;
 		let mut items_by_category = 0;
@@ -123,12 +187,24 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		for i in 0..categories_blocks.len() {
 			let category_count = i + 1;
 			let category_id = Uuid::new_v4();
-			let category_name = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_19i46pu\")][{}]/div[1]", &category_count)).await {
+			let category_name = match find_element_by_xpath(
+				driver.clone(),
+				&format!(
+					"//div[contains(@class, \"_19i46pu\")][{}]/div[1]",
+					&category_count
+				),
+				&format!(
+					"//div[contains(@class, \"_19i46pu\")][{}]/div",
+					&category_count
+				),
+			)
+			.await
+			{
 				Ok(elem) => elem,
 				Err(e) => {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 					dbg!(&counter);
-					println!("error while searching image: {}", e);
+					println!("error while searching category: {}", e);
 					"".to_string()
 				}
 			};
@@ -137,12 +213,22 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				continue;
 			}
 
-			let category_value = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_19i46pu\")][{}]/div[2]", &category_count)).await {
+			let category_value = match find_element_by_xpath(
+				driver.clone(),
+				&format!(
+					"//div[contains(@class, \"_19i46pu\")][{}]/div[2]",
+					&category_count
+				),
+				&format!(
+					"//div[contains(@class, \"_19i46pu\")][{}]/div[last()]",
+					&category_count
+				),
+			)
+			.await
+			{
 				Ok(elem) => elem,
 				Err(e) => {
-					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
-					dbg!(&counter);
-					println!("error while searching image: {}", e);
+					println!("error while searching category: {}", e);
 					"".to_string()
 				}
 			};
@@ -166,7 +252,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.await;
 
 			if i == 0 {
-				items_by_category = category_value.clone().parse::<i32>().unwrap();
+				items_by_category = category_value.clone().parse::<i32>().unwrap_or(0);
 			}
 
 			println!("{}..{}", &total_count, &items_by_category);
@@ -181,29 +267,40 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					continue;
 				}
 
-				let item_name = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_8mqv20\")][{}]/div[1]", i)).await {
-				Ok(elem) => elem,
-				Err(e) => {
-					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
-					dbg!(&counter);
-					println!("error while searching image: {}", e);
-					"".to_string()
-				}
-			};
+				let item_name = match find_element_by_xpath(
+					driver.clone(),
+					&format!("//div[contains(@class, \"_8mqv20\")][{}]/div[1]", i),
+					&format!("//div[contains(@class, \"_8mqv20\")][{}]/div", i),
+				)
+				.await
+				{
+					Ok(elem) => elem,
+					Err(e) => {
+						let counter =
+							update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+						dbg!(&counter);
+						println!("error while searching prices: {}", e);
+						"".to_string()
+					}
+				};
 
 				if &item_name == "" {
 					continue;
 				}
 
-				let item_value = match find_element_by_xpath(driver.clone(), &format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div[2]/div[contains(@class, \"_8mqv20\")][{}]/div[2]", i)).await {
-				Ok(elem) => elem,
-				Err(e) => {
-					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
-					dbg!(&counter);
-					println!("error while searching image: {}", e);
-					"".to_string()
-				}
-			};
+				let item_value = match find_element_by_xpath(
+					driver.clone(),
+					&format!("//div[contains(@class, \"_8mqv20\")][{}]/div[2]", i),
+					&format!("//div[contains(@class, \"_8mqv20\")][{}]/div[last()]", i),
+				)
+				.await
+				{
+					Ok(elem) => elem,
+					Err(e) => {
+						println!("error while searching prices: {}", e);
+						"".to_string()
+					}
+				};
 
 				dbg!(&item_name);
 				dbg!(&item_value);
@@ -222,32 +319,31 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				.await;
 			}
 
-			total_count += category_value.clone().parse::<i32>().unwrap();
-			if i == 0 {
-				items_by_category += category_value.clone().parse::<i32>().unwrap() - 1;
-			} else {
-				items_by_category += category_value.clone().parse::<i32>().unwrap();
+			total_count += category_value.clone().parse::<i32>().unwrap_or(0);
+			if i < categories_blocks.len() {
+				items_by_category += category_value.clone().parse::<i32>().unwrap_or(0) - 1;
 			}
 		}
 
 		// обновляем в базе счетчик
-		// let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 
 		println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());
 		println!("{}", "======");
-		driver.clone().quit().await?;
 	}
+
+	driver.clone().quit().await?;
 
 	Ok(())
 }
 
 pub async fn find_main_block(driver: WebDriver) -> Result<String, WebDriverError> {
 	let err_block = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
-			.first()
-			.await?
-			.inner_html()
-			.await?;
+		.query(By::ClassName("_18lzknl"))
+		.first()
+		.await?
+		.inner_html()
+		.await?;
 
 	Ok(err_block)
 }
@@ -269,12 +365,39 @@ pub async fn find_count_block(driver: WebDriver) -> Result<f32, WebDriverError> 
 pub async fn find_element_by_xpath(
 	driver: WebDriver,
 	xpath: &str,
+	xpath2: &str,
 ) -> Result<String, WebDriverError> {
 	let elem = driver
 		.query(By::XPath(xpath))
+		.or(By::XPath(xpath2))
 		.first()
 		.await?
 		.inner_html()
+		.await?;
+
+	Ok(elem)
+}
+
+pub async fn find_elements_by_class(
+	driver: WebDriver,
+	classname: &str,
+) -> Result<Vec<WebElement>, WebDriverError> {
+	let elem = driver
+		.query(By::ClassName(classname))
+		.all_from_selector_required()
+		.await?;
+
+	Ok(elem)
+}
+
+pub async fn check_the_element(
+	driver: WebDriver,
+	classname: &str,
+) -> Result<Vec<WebElement>, WebDriverError> {
+	let elem = driver
+		.query(By::ClassName(classname))
+		.nowait()
+		.all_from_selector_required()
 		.await?;
 
 	Ok(elem)

@@ -1,8 +1,8 @@
 use crate::{
 	models::{
-		Count, ExtFilteredFirmWithOaiDescription, ExtFirmWithOaiDescription, FilterExtOptions,
+		Count, FilteredFirm, Firm, FilterExtOptions,
 	},
-	utils::filter_firm_record::filter_ext_firm_record,
+	utils::filter_firm_record::filter_firm_record,
 	AppState,
 };
 use actix_web::{
@@ -27,12 +27,10 @@ async fn get_firms_handler(
 	let table = String::from("firms");
 
 	let query_result = sqlx::query_as!(
-		ExtFirmWithOaiDescription, "SELECT a.firm_id, a.city_id, a.category_id, a.name, a.address, a.site, a.default_phone, a.description, b.oai_description_value FROM firms a
-		LEFT JOIN oai_descriptions b ON a.firm_id = b.firm_id
+		Firm, "SELECT * FROM firms
 		WHERE city_id = $1
 		AND category_id = $2
-		AND b.oai_description_value IS NOT NULL
-		ORDER BY a.two_gis_firm_id
+		ORDER BY two_gis_firm_id
 	 	LIMIT $3 OFFSET $4",
 		city_id,
 		category_id,
@@ -57,7 +55,7 @@ async fn get_firms_handler(
 	let json_response = json!({
 		"status":  "success",
 		"data": json!({
-			"firms": &firms.into_iter().map(|firm| filter_ext_firm_record(&firm)).collect::<Vec<ExtFilteredFirmWithOaiDescription>>(),
+			"firms": &firms.into_iter().map(|firm| filter_firm_record(&firm)).collect::<Vec<FilteredFirm>>(),
 			"firms_count": &firms_count
 		})
 	});
@@ -69,10 +67,8 @@ async fn get_firms_handler(
 async fn get_firm_handler(path: Path<Uuid>, data: web::Data<AppState>) -> impl Responder {
 	let firm_id = &path.into_inner();
 
-	let firm = sqlx::query_as!(ExtFirmWithOaiDescription, 
-		"SELECT a.firm_id, a.city_id, a.category_id, a.name, a.address, a.site, a.default_phone, a.description, b.oai_description_value FROM firms a
-		LEFT JOIN oai_descriptions b ON a.firm_id = b.firm_id
-		WHERE a.firm_id = $1", firm_id)
+	let firm = sqlx::query_as!(Firm,
+		"SELECT * FROM firms WHERE firm_id = $1", firm_id)
 	.fetch_one(&data.db)
 	.await
 	.unwrap();
@@ -80,7 +76,7 @@ async fn get_firm_handler(path: Path<Uuid>, data: web::Data<AppState>) -> impl R
 	let json_response = json!({
 		"status":  "success",
 		"data": json!({
-			"firm": filter_ext_firm_record(&firm)
+			"firm": filter_firm_record(&firm)
 		})
 	});
 
