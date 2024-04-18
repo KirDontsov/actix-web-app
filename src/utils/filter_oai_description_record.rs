@@ -1,4 +1,4 @@
-use crate::models::{OAIDescription, FilteredOAIDescription};
+use crate::models::{FilteredOAIDescription, OAIDescription};
 
 pub fn filter_oai_description_record(description: &OAIDescription) -> FilteredOAIDescription {
 	FilteredOAIDescription {

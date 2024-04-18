@@ -11,6 +11,7 @@ pub fn filter_firm_record(firm: &Firm) -> FilteredFirm {
 		address: firm.address.to_owned(),
 		site: firm.site.to_owned(),
 		default_phone: firm.default_phone.to_owned(),
+		url: firm.url.to_owned(),
 	}
 }
 
