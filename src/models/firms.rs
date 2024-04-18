@@ -30,6 +30,7 @@ pub struct Firm {
 	pub site: Option<String>,
 	pub default_email: Option<String>,
 	pub default_phone: Option<String>,
+	pub url: Option<String>,
 	#[serde(rename = "createdTs")]
 	pub created_ts: Option<DateTime<Utc>>,
 	#[serde(rename = "updatedTs")]
@@ -61,6 +62,7 @@ pub struct FilteredFirm {
 	pub address: Option<String>,
 	pub site: Option<String>,
 	pub default_phone: Option<String>,
+	pub url: Option<String>,
 }
 
 #[allow(non_snake_case)]
@@ -95,4 +97,11 @@ pub struct ExtFilteredFirmWithOaiDescription {
 	pub default_phone: Option<String>,
 	pub oai_description_value: Option<String>,
 	pub description: Option<String>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct UpdateFirmAddress {
+	pub firm_id: Uuid,
+	pub address: String,
 }

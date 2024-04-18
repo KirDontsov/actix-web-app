@@ -1,7 +1,5 @@
 use crate::{
-	models::{
-		Count, FilteredFirm, Firm, FilterExtOptions,
-	},
+	models::{Count, FilterExtOptions, FilteredFirm, Firm},
 	utils::filter_firm_record::filter_firm_record,
 	AppState,
 };
@@ -27,7 +25,8 @@ async fn get_firms_handler(
 	let table = String::from("firms");
 
 	let query_result = sqlx::query_as!(
-		Firm, "SELECT * FROM firms
+		Firm,
+		"SELECT * FROM firms
 		WHERE city_id = $1
 		AND category_id = $2
 		ORDER BY two_gis_firm_id
@@ -67,11 +66,10 @@ async fn get_firms_handler(
 async fn get_firm_handler(path: Path<Uuid>, data: web::Data<AppState>) -> impl Responder {
 	let firm_id = &path.into_inner();
 
-	let firm = sqlx::query_as!(Firm,
-		"SELECT * FROM firms WHERE firm_id = $1", firm_id)
-	.fetch_one(&data.db)
-	.await
-	.unwrap();
+	let firm = sqlx::query_as!(Firm, "SELECT * FROM firms WHERE firm_id = $1", firm_id)
+		.fetch_one(&data.db)
+		.await
+		.unwrap();
 
 	let json_response = json!({
 		"status":  "success",

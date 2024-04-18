@@ -7,8 +7,8 @@ use crate::controllers::data_crawlers::*;
 use crate::controllers::data_processing::*;
 use crate::controllers::firms::*;
 use crate::controllers::images::*;
-use crate::controllers::oai_reviews::*;
 use crate::controllers::oai_descriptions::*;
+use crate::controllers::oai_reviews::*;
 use crate::controllers::prices::*;
 use crate::controllers::quotes::*;
 use crate::controllers::reviews::*;
@@ -30,7 +30,9 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// .service(firms_description_crawler_handler)
 		// .service(firms_images_crawler_handler)
 		// .service(firms_prices_crawler_handler)
+		// .service(firms_address_crawler_handler)
 		// processing
+		// .service(urls_processing_handler)
 		// .service(images_processing_handler)
 		// .service(reviews_processing_handler)
 		// .service(description_processing_handler)
