@@ -31,6 +31,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// .service(firms_images_crawler_handler)
 		// .service(firms_prices_crawler_handler)
 		// .service(firms_address_crawler_handler)
+		// .service(mir_far_crawler_handler)
 		// processing
 		// .service(urls_processing_handler)
 		// .service(images_processing_handler)
@@ -46,26 +47,33 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(add_quote_handler)
 		// firm
 		.service(get_firms_handler)
+		.service(get_firms_by_abbr_handler)
+		.service(get_firm_by_url_handler)
 		.service(get_firm_handler)
 		// cities
 		.service(get_city_handler)
 		.service(get_cities_handler)
 		// categories
 		.service(get_category_handler)
+		.service(get_category_by_abbreviation_handler)
 		.service(get_categories_handler)
 		// types
 		.service(get_types_handler)
 		// reviews
 		.service(get_reviews_handler)
+		.service(get_reviews_by_url_handler)
 		.service(add_review_handler)
 		.service(get_oai_reviews_handler)
+		.service(get_oai_reviews_by_url_handler)
 		// description
 		.service(get_oai_description_by_firm_handler)
+		.service(get_oai_description_by_url_handler)
 		// images
 		.service(get_images_handler)
-		.service(mir_far_crawler_handler)
+		.service(get_images_by_url_handler)
 		// prices
-		.service(get_prices_handler);
+		.service(get_prices_handler)
+		.service(get_prices_by_url_handler);
 
 	conf.service(scope);
 }

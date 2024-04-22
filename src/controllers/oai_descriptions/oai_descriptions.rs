@@ -1,5 +1,5 @@
 use crate::{
-	models::{FilterOptions, OAIDescription},
+	models::{FilterOptions, OAIDescription, Firm},
 	AppState,
 };
 use actix_web::{
@@ -60,6 +60,36 @@ async fn get_oai_description_by_id_handler(
 		OAIDescription,
 		"SELECT * FROM oai_descriptions WHERE oai_description_id = $1",
 		description_id
+	)
+	.fetch_one(&data.db)
+	.await
+	.unwrap();
+
+	let json_response = json!({
+		"status":  "success",
+		"data": json!({
+			"oai_description": filter_oai_description_record(&description)
+		})
+	});
+
+	HttpResponse::Ok().json(json_response)
+}
+
+#[get("/oai_description_by_url/{id}")]
+async fn get_oai_description_by_url_handler(
+	path: Path<String>,
+	data: web::Data<AppState>,
+	// _: jwt_auth::JwtMiddleware,
+) -> impl Responder {
+	let firm_url = &path.into_inner();
+	let firm_query_result = Firm::get_firm_by_url(&data.db, &firm_url).await;
+	let firm = firm_query_result.unwrap();
+	let firm_id = firm.firm_id;
+
+	let description = sqlx::query_as!(
+		OAIDescription,
+		"SELECT * FROM oai_descriptions WHERE firm_id = $1",
+		firm_id
 	)
 	.fetch_one(&data.db)
 	.await

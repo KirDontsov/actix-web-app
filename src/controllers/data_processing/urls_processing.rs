@@ -46,13 +46,21 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 		let mut firm_url = String::new();
 
-		let firms_double_urls =
-			sqlx::query_as!(Firm, r#"SELECT * FROM firms WHERE url = $1"#, &firm.url.clone().unwrap())
-				.fetch_all(&data.db)
-				.await?;
+		let firms_double_urls = sqlx::query_as!(
+			Firm,
+			r#"SELECT * FROM firms WHERE url = $1"#,
+			&firm.url.clone().unwrap()
+		)
+		.fetch_all(&data.db)
+		.await?;
 
 		if firms_double_urls.len() > 1 {
-			firm_url = format!("{}-{}-{}", &translit_name, &translit_address, &firm.firm_id.clone());
+			firm_url = format!(
+				"{}-{}-{}",
+				&translit_name,
+				&translit_address,
+				&firm.firm_id.clone()
+			);
 		} else {
 			firm_url = format!("{}-{}", &translit_name, &translit_address);
 		}
@@ -60,11 +68,12 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		let _ = sqlx::query_as!(
 			Firm,
 			r#"UPDATE firms SET url = $1 WHERE firm_id = $2 RETURNING *"#,
-			firm_url.replace(" ", "-")
-			.replace(",", "-")
-			.replace(".", "-")
-			.replace("`", "")
-			.replace("&amp;", "&"),
+			firm_url
+				.replace(" ", "-")
+				.replace(",", "-")
+				.replace(".", "-")
+				.replace("`", "")
+				.replace("&amp;", "&"),
 			firm.firm_id,
 		)
 		.fetch_one(&data.db)

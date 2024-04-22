@@ -41,7 +41,7 @@ impl Firm {
 		let firm_query_result = sqlx::query_as::<_, Firm>(&sql).fetch_one(db).await;
 
 		if firm_query_result.is_err() {
-			println!("Что-то пошло не так во время запроса count {}", &table_name);
+			println!("Что-то пошло не так во время запроса firm {}", &table_name);
 		}
 
 		Ok(firm_query_result.unwrap())
@@ -64,7 +64,22 @@ impl Firm {
 		let firm_query_result = sqlx::query_as::<_, Firm>(&sql).fetch_one(db).await;
 
 		if firm_query_result.is_err() {
-			println!("Что-то пошло не так во время запроса count {}", &table_name);
+			println!("Что-то пошло не так во время запроса firm {}", &table_name);
+		}
+
+		Ok(firm_query_result.unwrap())
+	}
+
+	pub async fn get_firm_by_url(
+		db: &Pool<Postgres>,
+		url: &String,
+	) -> Result<Self, CustomError> {
+		let firm_query_result = sqlx::query_as!(Firm, "SELECT * FROM firms WHERE url = $1", url)
+			.fetch_one(db)
+			.await;
+
+		if firm_query_result.is_err() {
+			println!("Что-то пошло не так во время запроса firm");
 		}
 
 		Ok(firm_query_result.unwrap())
