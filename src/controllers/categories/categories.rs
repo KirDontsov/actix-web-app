@@ -73,3 +73,26 @@ async fn get_category_handler(path: Path<Uuid>, data: web::Data<AppState>) -> im
 
 	HttpResponse::Ok().json(json_response)
 }
+
+#[get("/category_abbr/{id}")]
+async fn get_category_by_abbreviation_handler(path: Path<String>, data: web::Data<AppState>) -> impl Responder {
+	let category_abbreviation = &path.into_inner();
+
+	let category = sqlx::query_as!(
+		Category,
+		"SELECT * FROM categories WHERE abbreviation = $1",
+		category_abbreviation
+	)
+	.fetch_one(&data.db)
+	.await
+	.unwrap();
+
+	let json_response = json!({
+		"status":  "success",
+		"data": json!({
+			"category": filter_category_record(&category)
+		})
+	});
+
+	HttpResponse::Ok().json(json_response)
+}

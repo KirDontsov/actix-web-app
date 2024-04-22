@@ -1,5 +1,5 @@
 use crate::{
-	models::{AddReview, Count, FilterOptions, FilteredReview, Review},
+	models::{AddReview, Count, FilterOptions, FilteredReview, Review, Firm},
 	AppState,
 };
 use actix_web::{
@@ -22,6 +22,66 @@ async fn get_reviews_handler(
 	let firm_id = &path.into_inner();
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+
+	let query_result = sqlx::query_as!(
+		Review,
+		"SELECT * FROM reviews WHERE firm_id = $1 ORDER by review_id LIMIT $2 OFFSET $3",
+		firm_id,
+		limit as i32,
+		offset as i32
+	)
+	.fetch_all(&data.db)
+	.await;
+
+	let count_query_result = sqlx::query_as!(
+		Count,
+		"SELECT count(*) AS count FROM reviews WHERE firm_id = $1",
+		firm_id
+	)
+	.fetch_one(&data.db)
+	.await;
+
+	if count_query_result.is_err() {
+		let message = "Что-то пошло не так во время подсчета пользователей";
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": message}));
+	}
+
+	let review_count = count_query_result.unwrap();
+
+	if query_result.is_err() {
+		let message = "Что-то пошло не так во время чтения пользователей";
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": message}));
+	}
+
+	let reviews = query_result.unwrap();
+
+	let json_response = json!({
+		"status":  "success",
+		"data": json!({
+			"reviews": &reviews.into_iter().map(|review| filter_review_record(&review)).collect::<Vec<FilteredReview>>(),
+			"reviews_count": &review_count.count.unwrap()
+		})
+	});
+
+	HttpResponse::Ok().json(json_response)
+}
+
+#[get("/reviews_by_url/{id}")]
+async fn get_reviews_by_url_handler(
+	path: Path<String>,
+	opts: web::Query<FilterOptions>,
+	data: web::Data<AppState>,
+	// _: jwt_auth::JwtMiddleware,
+) -> impl Responder {
+	let limit = opts.limit.unwrap_or(10);
+	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+
+	let firm_url = &path.into_inner();
+	let firm_query_result = Firm::get_firm_by_url(&data.db, &firm_url).await;
+	let firm = firm_query_result.unwrap();
+	let firm_id = firm.firm_id;
 
 	let query_result = sqlx::query_as!(
 		Review,
