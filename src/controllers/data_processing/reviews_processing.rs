@@ -116,12 +116,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 		let mut reviews: Vec<SaveOAIReview> = Vec::new();
 
-		let reviews_by_firm = sqlx::query_as!(
-			Review,
-			"SELECT * FROM reviews WHERE firm_id = $1;",
-			&firm.firm_id
-		)
-		.fetch_all(&data.db)
+		let reviews_by_firm = Review::get_all_reviews(&data.db, &firm.firm_id)
 		.await
 		.unwrap();
 
