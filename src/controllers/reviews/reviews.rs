@@ -83,15 +83,9 @@ async fn get_reviews_by_url_handler(
 	let firm = firm_query_result.unwrap();
 	let firm_id = firm.firm_id;
 
-	let query_result = sqlx::query_as!(
-		Review,
-		"SELECT * FROM reviews WHERE firm_id = $1 ORDER by review_id LIMIT $2 OFFSET $3",
-		firm_id,
-		limit as i32,
-		offset as i32
-	)
-	.fetch_all(&data.db)
-	.await;
+	let query_result = Review::get_reviews(&data.db, firm_id,
+	limit as i64,
+	offset as i64).await;
 
 	let count_query_result = sqlx::query_as!(
 		Count,
