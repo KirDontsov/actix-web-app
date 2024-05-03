@@ -117,8 +117,8 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		let mut reviews: Vec<SaveOAIReview> = Vec::new();
 
 		let reviews_by_firm = Review::get_all_reviews(&data.db, &firm.firm_id)
-		.await
-		.unwrap();
+			.await
+			.unwrap();
 
 		if reviews_by_firm.len() < 2 {
 			println!("SKIP - Too few reviews");
@@ -280,7 +280,6 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 // 		У организации поровну положительных и отрицательных отзывов, укажи что рейтинг организации удовлетворительный, и объясни почему.
 // 		Или например:
 // 		У организации больше отрицательных отзывов, укажи что рейтинг организации не удовлетворительный, и объясни почему.
-
 
 // let preamble = format!("
 // 		Вот отзывы которые ты должен проанализировать: {}

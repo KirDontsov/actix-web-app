@@ -1,5 +1,5 @@
 use crate::{
-	models::{FilterOptions, OAIDescription, Firm},
+	models::{FilterOptions, Firm, OAIDescription},
 	AppState,
 };
 use actix_web::{

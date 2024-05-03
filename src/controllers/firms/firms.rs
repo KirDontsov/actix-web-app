@@ -1,5 +1,5 @@
 use crate::{
-	models::{Count, FilterExtOptions, FilteredFirm, Firm, City, Category},
+	models::{Category, City, Count, FilterExtOptions, FilteredFirm, Firm},
 	utils::filter_firm_record::filter_firm_record,
 	AppState,
 };
@@ -104,16 +104,22 @@ async fn get_firms_by_abbr_handler(
 		AND category_id = $2
 		ORDER BY two_gis_firm_id
 	 	LIMIT $3 OFFSET $4",
-		city.city_id.clone(), category.category_id.clone(),
+		city.city_id.clone(),
+		category.category_id.clone(),
 		limit as i32,
 		offset as i32
 	)
 	.fetch_all(&data.db)
 	.await;
 
-	let firms_count = Count::count_firms_by_city_category(&data.db, table, city.city_id.clone(), category.category_id.clone())
-		.await
-		.unwrap_or(0);
+	let firms_count = Count::count_firms_by_city_category(
+		&data.db,
+		table,
+		city.city_id.clone(),
+		category.category_id.clone(),
+	)
+	.await
+	.unwrap_or(0);
 
 	if query_result.is_err() {
 		let message = "Что-то пошло не так во время чтения firms";

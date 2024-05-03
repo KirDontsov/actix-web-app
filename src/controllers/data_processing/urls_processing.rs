@@ -35,6 +35,10 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		println!("№ {}", &j);
 		let firm = Firm::get_firm(&data.db, j).await.unwrap();
 
+		if firm.url.clone().is_some() {
+			continue;
+		}
+
 		let translit_name = Translit::convert(firm.name.clone());
 		let firm_address = firm.address.clone().unwrap_or("".to_string());
 		let firm_street = firm_address.split(",").collect::<Vec<&str>>()[0].to_string();
@@ -49,7 +53,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		let firms_double_urls = sqlx::query_as!(
 			Firm,
 			r#"SELECT * FROM firms WHERE url = $1"#,
-			&firm.url.clone().unwrap()
+			&firm.url.clone().unwrap_or("".to_string())
 		)
 		.fetch_all(&data.db)
 		.await?;
@@ -73,6 +77,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 				.replace(",", "-")
 				.replace(".", "-")
 				.replace("`", "")
+				.replace("--", "-")
 				.replace("&amp;", "&"),
 			firm.firm_id,
 		)

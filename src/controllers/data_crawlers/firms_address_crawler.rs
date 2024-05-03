@@ -84,13 +84,15 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				continue;
 			}
 
-			if block_content.contains("этаж")
-				|| block_content.contains("Москва")
-				|| block_content.contains("Санкт-Петербург")
-			{
-				address = block.text().await?;
-				break;
-			}
+			// if block_content.contains("этаж")
+			// 	|| block_content.contains("Москва")
+			// 	|| block_content.contains("Санкт-Петербург")
+			// {
+			// 	address = block.text().await?;
+			// 	break;
+			// }
+			address = block.text().await?;
+			break;
 		}
 
 		firms.push(UpdateFirmAddress {

@@ -6,6 +6,7 @@ pub struct City {
 	pub city_id: uuid::Uuid,
 	pub name: Option<String>,
 	pub abbreviation: Option<String>,
+	pub coords: Option<String>,
 }
 
 #[allow(non_snake_case)]
@@ -21,4 +22,5 @@ pub struct FilteredCity {
 	pub city_id: String,
 	pub name: Option<String>,
 	pub abbreviation: Option<String>,
+	pub coords: Option<String>,
 }

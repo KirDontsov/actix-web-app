@@ -70,10 +70,7 @@ impl Firm {
 		Ok(firm_query_result.unwrap())
 	}
 
-	pub async fn get_firm_by_url(
-		db: &Pool<Postgres>,
-		url: &String,
-	) -> Result<Self, CustomError> {
+	pub async fn get_firm_by_url(db: &Pool<Postgres>, url: &String) -> Result<Self, CustomError> {
 		let firm_query_result = sqlx::query_as!(Firm, "SELECT * FROM firms WHERE url = $1", url)
 			.fetch_one(db)
 			.await;
