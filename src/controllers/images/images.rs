@@ -1,5 +1,5 @@
 use crate::{
-	models::{Count, FilteredImage, Image, Firm},
+	models::{Count, FilteredImage, Firm, Image},
 	utils::filter_image_record::filter_image_record,
 	AppState,
 };
@@ -42,7 +42,10 @@ async fn get_images_handler(path: Path<Uuid>, data: web::Data<AppState>) -> impl
 }
 
 #[get("/images_by_url/{id}")]
-async fn get_images_by_url_handler(path: Path<String>, data: web::Data<AppState>) -> impl Responder {
+async fn get_images_by_url_handler(
+	path: Path<String>,
+	data: web::Data<AppState>,
+) -> impl Responder {
 	let table = String::from("images");
 	let firm_url = &path.into_inner();
 	let firm_query_result = Firm::get_firm_by_url(&data.db, &firm_url).await;

@@ -4,11 +4,18 @@ use uuid::Uuid;
 use crate::{api::CustomError, models::Review};
 
 impl Review {
-	pub async fn get_reviews(db: &Pool<Postgres>, firm_id: Uuid, limit: i64, offset: i64) -> Result<Vec<Self>, CustomError> {
+	pub async fn get_reviews(
+		db: &Pool<Postgres>,
+		firm_id: Uuid,
+		limit: i64,
+		offset: i64,
+	) -> Result<Vec<Self>, CustomError> {
 		let reviews_query_result = sqlx::query_as!(
 			Review,
 			"SELECT * FROM reviews WHERE firm_id = $1 ORDER by created_ts LIMIT $2 OFFSET $3",
-			&firm_id, &limit, &offset
+			&firm_id,
+			&limit,
+			&offset
 		)
 		.fetch_all(db)
 		.await;
@@ -20,7 +27,10 @@ impl Review {
 		Ok(reviews_query_result.unwrap_or(Vec::new()))
 	}
 
-	pub async fn get_all_reviews(db: &Pool<Postgres>, firm_id: &Uuid) -> Result<Vec<Self>, CustomError> {
+	pub async fn get_all_reviews(
+		db: &Pool<Postgres>,
+		firm_id: &Uuid,
+	) -> Result<Vec<Self>, CustomError> {
 		let reviews_query_result = sqlx::query_as!(
 			Review,
 			"SELECT * FROM reviews WHERE firm_id = $1 ORDER by created_ts",

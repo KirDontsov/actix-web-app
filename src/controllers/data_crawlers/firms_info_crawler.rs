@@ -39,6 +39,7 @@ async fn firms_info_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("55d7ef92-45ca-40df-8e88-4e1a32076367");
 	let table = String::from("two_gis_firms");
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
 	let driver = <dyn Driver>::get_driver().await?;
 
 	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
@@ -173,37 +174,48 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			}
 		};
 
-		firms.push(SaveFirm {
-			two_gis_firm_id: firm.two_gis_firm_id.clone().unwrap(),
-			category_id: category.category_id.clone(),
-			name: firm.name.clone().unwrap(),
-			address: firm_address.replace("\n", ", "),
-			default_phone: firm_phone.clone(),
-			site: firm_site.clone(),
-			type_id: type_item.type_id.clone(),
-			city_id: uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap(),
-			// default_email: firm_email.clone(),
-		});
+		let existed_firm = sqlx::query_as!(
+			Firm,
+			"SELECT * FROM firms WHERE two_gis_firm_id = $1",
+			firm.two_gis_firm_id.clone().unwrap(),
+		)
+		.fetch_one(&data.db)
+		.await;
+
+		dbg!(&existed_firm);
 
 		// запись в бд
-		for firm in firms {
+		if existed_firm.is_ok() {
+			println!("UPDATE {}", firm.two_gis_firm_id.clone().unwrap());
+
 			let _ = sqlx::query_as!(
 				Firm,
-				"INSERT INTO firms (two_gis_firm_id, city_id, category_id, type_id, name, address, default_phone, site) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
-				firm.two_gis_firm_id,
-				firm.city_id,
-				firm.category_id,
-				firm.type_id,
-				firm.name,
-				firm.address,
-				firm.default_phone,
-				firm.site,
+				r#"UPDATE firms SET coords = $1 WHERE two_gis_firm_id = $2 RETURNING *"#,
+				firm.coords.clone().unwrap(),
+				firm.two_gis_firm_id.clone().unwrap(),
 			)
 			.fetch_one(&data.db)
 			.await;
+		} else {
+			println!("INSERT {}", firm.two_gis_firm_id.clone().unwrap());
 
-			dbg!(&firm);
+			let _ = sqlx::query_as!(
+				Firm,
+				"INSERT INTO firms (two_gis_firm_id, city_id, category_id, type_id, name, address, default_phone, site, coords) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
+				firm.two_gis_firm_id.clone().unwrap(),
+				city_id.clone(),
+				category.category_id.clone(),
+				type_item.type_id.clone(),
+				firm.name.clone().unwrap(),
+				firm_address.replace("\n", ", "),
+				firm_phone.clone(),
+				firm_site.clone(),
+				firm.coords.clone().unwrap(),
+			)
+			.fetch_one(&data.db)
+			.await;
 		}
+
 		// обновляем в базе счетчик
 		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 

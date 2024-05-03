@@ -75,7 +75,10 @@ async fn get_category_handler(path: Path<Uuid>, data: web::Data<AppState>) -> im
 }
 
 #[get("/category_abbr/{id}")]
-async fn get_category_by_abbreviation_handler(path: Path<String>, data: web::Data<AppState>) -> impl Responder {
+async fn get_category_by_abbreviation_handler(
+	path: Path<String>,
+	data: web::Data<AppState>,
+) -> impl Responder {
 	let category_abbreviation = &path.into_inner();
 
 	let category = sqlx::query_as!(

@@ -1,6 +1,7 @@
 use crate::{
 	models::{
-		Count, Firm, FilterOptions, FilteredPriceCategory, FilteredPriceItem, PriceCategory, PriceItem,
+		Count, FilterOptions, FilteredPriceCategory, FilteredPriceItem, Firm, PriceCategory,
+		PriceItem,
 	},
 	AppState,
 };

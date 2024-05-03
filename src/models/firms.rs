@@ -9,6 +9,7 @@ pub struct TwoGisFirm {
 	pub name: Option<String>,
 	pub two_gis_firm_id: Option<String>,
 	pub category_id: Option<String>,
+	pub coords: Option<String>,
 	#[serde(rename = "createdTs")]
 	pub created_ts: Option<DateTime<Utc>>,
 	#[serde(rename = "updatedTs")]
@@ -31,6 +32,7 @@ pub struct Firm {
 	pub default_email: Option<String>,
 	pub default_phone: Option<String>,
 	pub url: Option<String>,
+	pub coords: Option<String>,
 	#[serde(rename = "createdTs")]
 	pub created_ts: Option<DateTime<Utc>>,
 	#[serde(rename = "updatedTs")]
@@ -46,6 +48,7 @@ pub struct SaveFirm {
 	pub city_id: Uuid,
 	pub name: String,
 	pub address: String,
+	pub coords: String,
 	// pub floor: String,
 	pub default_phone: String,
 	pub site: String,
@@ -59,10 +62,12 @@ pub struct FilteredFirm {
 	pub two_gis_firm_id: Option<String>,
 	pub category_id: String,
 	pub name: Option<String>,
+	pub description: Option<String>,
 	pub address: Option<String>,
 	pub site: Option<String>,
 	pub default_phone: Option<String>,
 	pub url: Option<String>,
+	pub coords: Option<String>,
 }
 
 #[allow(non_snake_case)]

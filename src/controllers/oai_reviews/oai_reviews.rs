@@ -1,5 +1,5 @@
 use crate::{
-	models::{Count, FilterOptions, FilteredOAIReview, OAIReview, Firm},
+	models::{Count, FilterOptions, FilteredOAIReview, Firm, OAIReview},
 	AppState,
 };
 use actix_web::{
