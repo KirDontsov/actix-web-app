@@ -55,7 +55,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let start = get_counter(&data.db, &counter_id).await;
 
 	for j in start.clone()..=firms_count {
-		let driver = <dyn Driver>::get_driver().await?;
 		let firm =
 			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
 				.await
@@ -63,6 +62,19 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		println!("№ {}", &j);
 
+		let existed_images = sqlx::query_as!(
+			Image,
+			"SELECT * FROM images WHERE firm_id = $1",
+			firm.firm_id.clone(),
+		)
+		.fetch_one(&data.db)
+		.await;
+
+		if existed_images.is_ok() {
+			continue;
+		}
+
+		let driver = <dyn Driver>::get_driver().await?;
 		driver
 			.goto(format!(
 				"https://2gis.ru/moscow/search/автосервис/firm/{}/tab/photos",
@@ -83,9 +95,11 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		if main_block.contains("Филиал удалён из справочника")
 			|| main_block.contains("Филиал временно не работает")
-			|| main_block.contains("Добавьте сюда фотографий!")
+			|| main_block.contains("Добавьте")
+			|| main_block.contains("Людям нравится")
 			|| main_block.contains("Скоро открытие")
 		{
+			driver.clone().quit().await?;
 			continue;
 		}
 
@@ -111,7 +125,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		// скролим в цикле
 		for _ in 0..edge {
-			blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[2]/div")).all().await?;
+			blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[2]/div")).or(By::XPath("//div[contains(@class, \"_14aaw6sk\")]")).all_from_selector_required().await?;
 			let last = blocks.last().unwrap();
 			last.scroll_into_view().await?;
 			sleep(Duration::from_secs(2)).await;
@@ -162,10 +176,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			// We are now controlling the new tab.
 			driver.goto(&img.replace("_328x170", "")).await?;
 
-			match driver
-				.query(By::Tag("img"))
-				.first()
-				.await?
+			let img_block = find_img_block(driver.clone()).await.unwrap();
+
+			match img_block
 				.screenshot(Path::new(
 					format!("{}/{}/{}", "output/images", dir_name, &file_name).as_str(),
 				))
@@ -204,11 +217,13 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 pub async fn find_img(block: WebElement) -> Result<String, WebDriverError> {
 	let img = block
 		.query(By::Tag("img"))
+		.or(By::XPath("//div[contains(@class, \"_14aaw6sk\")]/img"))
 		.first()
 		.await?
 		.attr("src")
 		.await?
 		.unwrap();
+
 	Ok(img)
 }
 
@@ -234,4 +249,14 @@ pub async fn find_count_block(driver: WebDriver) -> Result<f32, WebDriverError> 
 			.unwrap_or(0.0);
 
 	Ok(img_count)
+}
+
+pub async fn find_img_block(driver: WebDriver) -> Result<WebElement, WebDriverError> {
+	let img_block = driver
+		.query(By::Tag("img"))
+		.or(By::XPath("//div[contains(@class, \"_14aaw6sk\")]/img"))
+		.first()
+		.await?;
+
+	Ok(img_block)
 }

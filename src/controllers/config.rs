@@ -48,6 +48,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// firm
 		.service(get_firms_handler)
 		.service(get_firms_by_abbr_handler)
+		.service(get_firms_by_abbr_for_map_handler)
 		.service(get_firm_by_url_handler)
 		.service(get_firm_handler)
 		// cities
