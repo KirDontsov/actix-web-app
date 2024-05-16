@@ -89,7 +89,12 @@ async fn get_prices_by_url_handler(
 
 	let firm_url = &path.into_inner();
 	let firm_query_result = Firm::get_firm_by_url(&data.db, &firm_url).await;
-	let firm = firm_query_result.unwrap();
+	let firm_message = "Что-то пошло не так во время чтения get_firm_by_url";
+	if firm_query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": &firm_message}));
+	}
+	let firm = firm_query_result.expect(&firm_message);
 	let firm_id = firm.firm_id;
 
 	let categories_query_result = sqlx::query_as!(
@@ -113,7 +118,7 @@ async fn get_prices_by_url_handler(
 	.await;
 
 	if query_result.is_err() {
-		let message = "Что-то пошло не так во время чтения пользователей";
+		let message = "Что-то пошло не так во время чтения PriceItem";
 		return HttpResponse::InternalServerError()
 			.json(json!({"status": "error","message": message}));
 	}

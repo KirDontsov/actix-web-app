@@ -40,34 +40,58 @@ async fn firms_description_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("7711da84-7d98-4072-aa35-b642c7ac0762");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("565ad1cb-b891-4185-ac75-24ab3898cf22").unwrap();
+	// let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").expect("city_id not set");
+	// let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").expect("category_id not set");
 	let city = "moscow";
+	let category = "рестораны";
 	let driver = <dyn Driver>::get_driver().await?;
 
 	let firms_count =
-		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+		Count::count_firms_with_empty_field(&data.db, table.clone(), "description".to_string())
 			.await
 			.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
 
+	dbg!(&start);
+
 	for j in start.clone()..=firms_count {
+		println!("№ {}", &j + 1);
+
 		let firm =
-			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+			Firm::get_firm_with_empty_field(&data.db, table.clone(), "description".to_string(), j)
 				.await
 				.unwrap();
 		let mut firms: Vec<UpdateFirmDesc> = Vec::new();
 
-		if firm.description.is_some() {
-			continue;
-		}
+		// let existing_description = firm.description.clone().expect("");
 
-		let url = format!("https://2gis.ru/{}/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/info",&city, &firm.two_gis_firm_id.clone().unwrap());
+		// if existing_description != "".to_string() {
+		// 	continue;
+		// }
+
+		let url = format!(
+			"https://2gis.ru/{}/search/{}/firm/{}/tab/info",
+			&city,
+			&category,
+			&firm.two_gis_firm_id.clone().unwrap()
+		);
 
 		driver.goto(url).await?;
 		sleep(Duration::from_secs(5)).await;
+
+		let error_block = match find_error_block(driver.clone()).await {
+			Ok(img_elem) => img_elem,
+			Err(e) => {
+				println!("error while searching error block: {}", e);
+				"".to_string()
+			}
+		};
+
+		if error_block.contains("Что-то пошло не так") {
+			driver.refresh().await?;
+		}
 
 		// не запрашиваем информацию о закрытом
 		let err_block = driver
@@ -87,7 +111,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let desc_block_xpath;
 
 		// находим блоки среди которых есть блок с блоками с инфой
-		let info_blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div/div/div")).all().await?;
+		let info_blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div/div/div")).all_from_selector_required().await?;
 		// находим номер блока с блоками с инфой
 		let mut info_block_number = 1;
 		for (i, block) in info_blocks.clone().into_iter().enumerate() {
@@ -139,21 +163,18 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		// запись в бд
 		for firm in firms {
-			let _ = sqlx::query_as!(
-				Firm,
+			let _ = sqlx::query_as::<_, Firm>(
 				r#"UPDATE firms SET description = $1 WHERE firm_id = $2 RETURNING *"#,
-				firm.description,
-				firm.firm_id,
 			)
+			.bind(&firm.description)
+			.bind(&firm.firm_id)
 			.fetch_one(&data.db)
 			.await;
 
 			dbg!(&firm);
 		}
 		// обновляем в базе счетчик
-		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
-
-		println!("№ {}", &j + 1);
+		// let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 	}
 
 	driver.clone().quit().await?;
@@ -170,4 +191,15 @@ pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebD
 		.await?;
 
 	Ok(block)
+}
+
+pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverError> {
+	let err_block = driver
+		.query(By::Id("root"))
+		.first()
+		.await?
+		.inner_html()
+		.await?;
+
+	Ok(err_block)
 }

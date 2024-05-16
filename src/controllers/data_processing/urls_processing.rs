@@ -29,11 +29,16 @@ async fn urls_processing_handler(
 async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
 	let table = String::from("firms");
 
-	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
+	let firms_count =
+		Count::count_firms_with_empty_field(&data.db, table.clone(), "url".to_string())
+			.await
+			.unwrap_or(0);
 
 	for j in 0..=firms_count {
 		println!("№ {}", &j);
-		let firm = Firm::get_firm(&data.db, j).await.unwrap();
+		let firm = Firm::get_firm_with_empty_field(&data.db, table.clone(), "url".to_string(), j)
+			.await
+			.unwrap();
 
 		if firm.url.clone().is_some() {
 			continue;
@@ -50,13 +55,10 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 		let mut firm_url = String::new();
 
-		let firms_double_urls = sqlx::query_as!(
-			Firm,
-			r#"SELECT * FROM firms WHERE url = $1"#,
-			&firm.url.clone().unwrap_or("".to_string())
-		)
-		.fetch_all(&data.db)
-		.await?;
+		let firms_double_urls = sqlx::query_as::<_, Firm>(r#"SELECT * FROM firms WHERE url = $1"#)
+			.bind(&firm.url.clone().unwrap_or("".to_string()))
+			.fetch_all(&data.db)
+			.await?;
 
 		if firms_double_urls.len() > 1 {
 			firm_url = format!(
@@ -69,9 +71,10 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 			firm_url = format!("{}-{}", &translit_name, &translit_address);
 		}
 
-		let _ = sqlx::query_as!(
-			Firm,
+		let _ = sqlx::query_as::<_, Firm>(
 			r#"UPDATE firms SET url = $1 WHERE firm_id = $2 RETURNING *"#,
+		)
+		.bind(
 			firm_url
 				.replace(" ", "-")
 				.replace(",", "-")
@@ -79,8 +82,8 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 				.replace("`", "")
 				.replace("--", "-")
 				.replace("&amp;", "&"),
-			firm.firm_id,
 		)
+		.bind(firm.firm_id)
 		.fetch_one(&data.db)
 		.await;
 

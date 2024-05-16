@@ -23,15 +23,14 @@ async fn get_reviews_handler(
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
 
-	let query_result = sqlx::query_as!(
-		Review,
-		"SELECT * FROM reviews WHERE firm_id = $1 ORDER by review_id LIMIT $2 OFFSET $3",
-		firm_id,
-		limit as i32,
-		offset as i32
-	)
-	.fetch_all(&data.db)
-	.await;
+	let query_result =
+		Review::get_reviews_by_firm(&data.db, firm_id, limit as i64, offset as i64).await;
+	let reviews_message = "Что-то пошло не так во время чтения category";
+	if query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": &reviews_message}));
+	}
+	let reviews = query_result.expect(&reviews_message);
 
 	let count_query_result = sqlx::query_as!(
 		Count,
@@ -41,21 +40,12 @@ async fn get_reviews_handler(
 	.fetch_one(&data.db)
 	.await;
 
+	let review_count_message = "Что-то пошло не так во время подсчета пользователей";
 	if count_query_result.is_err() {
-		let message = "Что-то пошло не так во время подсчета пользователей";
 		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
+			.json(json!({"status": "error","message": &review_count_message}));
 	}
-
-	let review_count = count_query_result.unwrap();
-
-	if query_result.is_err() {
-		let message = "Что-то пошло не так во время чтения пользователей";
-		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
-	}
-
-	let reviews = query_result.unwrap();
+	let review_count = count_query_result.expect(&review_count_message);
 
 	let json_response = json!({
 		"status":  "success",
@@ -80,10 +70,22 @@ async fn get_reviews_by_url_handler(
 
 	let firm_url = &path.into_inner();
 	let firm_query_result = Firm::get_firm_by_url(&data.db, &firm_url).await;
-	let firm = firm_query_result.unwrap();
+	let firm_message = "Что-то пошло не так во время чтения get_firm_by_url";
+	if firm_query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": &firm_message}));
+	}
+	let firm = firm_query_result.expect(&firm_message);
 	let firm_id = firm.firm_id;
 
-	let query_result = Review::get_reviews(&data.db, firm_id, limit as i64, offset as i64).await;
+	let query_result =
+		Review::get_reviews_by_firm(&data.db, &firm_id, limit as i64, offset as i64).await;
+	let reviews_message = "Что-то пошло не так во время чтения get_reviews_by_firm";
+	if query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": &reviews_message}));
+	}
+	let reviews = query_result.expect(&reviews_message);
 
 	let count_query_result = sqlx::query_as!(
 		Count,
@@ -93,21 +95,12 @@ async fn get_reviews_by_url_handler(
 	.fetch_one(&data.db)
 	.await;
 
+	let reviews_count_message = "Что-то пошло не так во время подсчета reviews_count";
 	if count_query_result.is_err() {
-		let message = "Что-то пошло не так во время подсчета пользователей";
 		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
+			.json(json!({"status": "error","message": &reviews_count_message}));
 	}
-
-	let review_count = count_query_result.unwrap();
-
-	if query_result.is_err() {
-		let message = "Что-то пошло не так во время чтения пользователей";
-		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
-	}
-
-	let reviews = query_result.unwrap();
+	let review_count = count_query_result.expect(&reviews_count_message);
 
 	let json_response = json!({
 		"status":  "success",

@@ -41,8 +41,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("5116c826-87a8-4881-ba9c-19c0068b3c62");
 	let table = String::from("firms");
 	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("565ad1cb-b891-4185-ac75-24ab3898cf22").unwrap();
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 	let city = "moscow";
+	let category = "рестораны";
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
@@ -54,10 +55,15 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let driver = <dyn Driver>::get_driver().await?;
 
 	for j in start.clone()..=firms_count {
-		let firm =
-			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
-				.await
-				.unwrap();
+		let firm = Firm::get_firm_by_city_category(
+			&data.db,
+			table.clone(),
+			city_id.clone(),
+			category_id.clone(),
+			j,
+		)
+		.await
+		.unwrap();
 
 		println!("№ {}", &j);
 
@@ -78,12 +84,25 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		driver
 			.goto(format!(
-				"https://2gis.ru/{}/search/автосервисы/firm/{}/tab/prices",
+				"https://2gis.ru/{}/search/{}/firm/{}/tab/prices",
 				&city,
+				&category,
 				&firm.two_gis_firm_id.clone().unwrap()
 			))
 			.await?;
 		sleep(Duration::from_secs(5)).await;
+
+		let error_block = match find_error_block(driver.clone()).await {
+			Ok(img_elem) => img_elem,
+			Err(e) => {
+				println!("error while searching error block: {}", e);
+				"".to_string()
+			}
+		};
+
+		if error_block.contains("Что-то пошло не так") {
+			driver.refresh().await?;
+		}
 
 		let main_block = match find_main_block(driver.clone()).await {
 			Ok(img_elem) => img_elem,
@@ -109,6 +128,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 				dbg!(&counter);
 				println!("error while searching _183lbryc: {}", e);
+				driver.clone().quit().await?;
 				vec![]
 			}
 		};
@@ -119,6 +139,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 				dbg!(&counter);
 				println!("error while searching _rixun1: {}", e);
+				driver.clone().quit().await?;
 				vec![]
 			}
 		};
@@ -136,6 +157,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 				dbg!(&counter);
 				println!("error while searching count block: {}", e);
+				driver.clone().quit().await?;
 				0.0
 			}
 		};
@@ -157,6 +179,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 					dbg!(&counter);
 					println!("error while searching category: {}", e);
+					driver.clone().quit().await?;
 					vec![]
 				}
 			};
@@ -177,6 +200,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 				dbg!(&counter);
 				println!("error while searching category: {}", e);
+				driver.clone().quit().await?;
 				vec![]
 			}
 		};
@@ -205,6 +229,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 					dbg!(&counter);
 					println!("error while searching category: {}", e);
+					driver.clone().quit().await?;
 					"".to_string()
 				}
 			};
@@ -280,6 +305,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 							update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 						dbg!(&counter);
 						println!("error while searching prices: {}", e);
+						driver.clone().quit().await?;
 						"".to_string()
 					}
 				};
@@ -401,4 +427,15 @@ pub async fn check_the_element(
 		.await?;
 
 	Ok(elem)
+}
+
+pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverError> {
+	let err_block = driver
+		.query(By::Id("root"))
+		.first()
+		.await?
+		.inner_html()
+		.await?;
+
+	Ok(err_block)
 }

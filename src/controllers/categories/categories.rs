@@ -32,13 +32,13 @@ async fn get_categories_handler(
 
 	let category_count = Count::count(&data.db, table).await.unwrap_or(0);
 
+	let message = "Что-то пошло не так во время чтения categories";
 	if query_result.is_err() {
-		let message = "Что-то пошло не так во время чтения categories";
 		return HttpResponse::InternalServerError()
-			.json(json!({"status": "error","message": message}));
+			.json(json!({"status": "error","message": &message}));
 	}
 
-	let categories = query_result.unwrap();
+	let categories = query_result.expect(&message);
 
 	let json_response = json!({
 		"status":  "success",
@@ -81,14 +81,15 @@ async fn get_category_by_abbreviation_handler(
 ) -> impl Responder {
 	let category_abbreviation = &path.into_inner();
 
-	let category = sqlx::query_as!(
-		Category,
-		"SELECT * FROM categories WHERE abbreviation = $1",
-		category_abbreviation
-	)
-	.fetch_one(&data.db)
-	.await
-	.unwrap();
+	let category_query_result =
+		Category::get_category_by_abbr(&data.db, &category_abbreviation).await;
+	let category_message = "Что-то пошло не так во время чтения category";
+	if category_query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": &category_message}));
+	}
+
+	let category = category_query_result.expect(&category_message);
 
 	let json_response = json!({
 		"status":  "success",

@@ -43,8 +43,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("2a94ecc5-fb8d-4b4d-bb03-e3ee2eb708da");
 	let table = String::from("firms");
 	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("565ad1cb-b891-4185-ac75-24ab3898cf22").unwrap();
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 	let city = "moscow";
+	let category = "рестораны";
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
@@ -77,17 +78,29 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let driver = <dyn Driver>::get_driver().await?;
 		driver
 			.goto(format!(
-				"https://2gis.ru/moscow/search/автосервис/firm/{}/tab/photos",
+				"https://2gis.ru/{}/search/{}/firm/{}/tab/photos",
+				&city,
+				&category,
 				&firm.two_gis_firm_id.clone().unwrap()
 			))
 			.await?;
 		sleep(Duration::from_secs(5)).await;
 
+		let error_block = match find_error_block(driver.clone()).await {
+			Ok(img_elem) => img_elem,
+			Err(e) => {
+				println!("error while searching error block: {}", e);
+				"".to_string()
+			}
+		};
+
+		if error_block.contains("Что-то пошло не так") {
+			driver.refresh().await?;
+		}
+
 		let main_block = match find_main_block(driver.clone()).await {
 			Ok(img_elem) => img_elem,
 			Err(e) => {
-				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
-				dbg!(&counter);
 				println!("error while searching main block: {}", e);
 				"".to_string()
 			}
@@ -259,4 +272,15 @@ pub async fn find_img_block(driver: WebDriver) -> Result<WebElement, WebDriverEr
 		.await?;
 
 	Ok(img_block)
+}
+
+pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverError> {
+	let err_block = driver
+		.query(By::Id("root"))
+		.first()
+		.await?
+		.inner_html()
+		.await?;
+
+	Ok(err_block)
 }

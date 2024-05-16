@@ -20,13 +20,29 @@ async fn firms_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let driver = <dyn Driver>::get_driver().await?;
 	let city = "moscow";
+	let category = "рестораны";
 
 	// автосервисы
-	let url = format!("https://2gis.ru/{}/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/rubricId/9041/37.716023%2C55.779159?m=37.62017%2C55.753466%2F11", &city);
+	let url = format!(
+		"https://2gis.ru/{}/search/{}/rubricId/164",
+		&city, &category
+	);
 	// рестораны
 	// let url = format!("https://2gis.ru/{}/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/rubricId/164?m=37.62017%2C55.753466%2F11", &city);
 	driver.goto(url).await?;
 	sleep(Duration::from_secs(1)).await;
+
+	let error_block = match find_error_block(driver.clone()).await {
+		Ok(img_elem) => img_elem,
+		Err(e) => {
+			println!("error while searching error block: {}", e);
+			"".to_string()
+		}
+	};
+
+	if error_block.contains("Что-то пошло не так") {
+		driver.refresh().await?;
+	}
 
 	let number_of_elements_xpath = String::from("//span[contains(@class, \"_1xhlznaa\")]");
 
@@ -59,7 +75,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		let mut name_xpath;
 
-		if j >= 0 {
+		// номер страницы после которой все упало
+		if j >= 309 {
 			for (i, firm_elem) in firms_elem.clone().into_iter().enumerate() {
 				println!("фирма: {}", &i);
 
@@ -119,7 +136,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					"INSERT INTO two_gis_firms (name, two_gis_firm_id, category_id, coords) VALUES ($1, $2, $3, $4) RETURNING *",
 					&firm_name.to_string(),
 					&firm_id.to_string(),
-					"car_service".to_string(),
+					"restaurants".to_string(),
 					&coords.replace("%2C", ", ").to_string(),
 				)
 				.fetch_one(&data.db)
@@ -168,6 +185,17 @@ pub async fn find_id_block(driver: WebDriver, xpath: String) -> Result<String, W
 		.attr("href")
 		.await?
 		.unwrap_or("".to_string());
+
+	Ok(err_block)
+}
+
+pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverError> {
+	let err_block = driver
+		.query(By::Id("root"))
+		.first()
+		.await?
+		.inner_html()
+		.await?;
 
 	Ok(err_block)
 }

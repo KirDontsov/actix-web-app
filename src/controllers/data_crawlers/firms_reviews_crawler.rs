@@ -40,8 +40,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("4bb99137-6c90-42e6-8385-83c522cde804");
 	let table = String::from("firms");
 	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("565ad1cb-b891-4185-ac75-24ab3898cf22").unwrap();
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
 	let city = "moscow";
+	let category = "рестораны";
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
@@ -71,33 +72,54 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		.fetch_one(&data.db)
 		.await;
 
-		dbg!(&existed_reviews);
-
 		if existed_reviews.is_ok() {
 			println!("{}", &firm.firm_id);
 			println!("Already exists");
 			continue;
 		}
 
-		driver.goto(format!("https://2gis.ru/{}/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}/tab/reviews", &city, &firm.two_gis_firm_id.clone().unwrap())).await?;
+		driver
+			.goto(format!(
+				"https://2gis.ru/{}/search/{}/firm/{}/tab/reviews",
+				&city,
+				&category,
+				&firm.two_gis_firm_id.clone().unwrap()
+			))
+			.await?;
 		sleep(Duration::from_secs(5)).await;
 
-		let no_reviews = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
-			.first()
-			.await?
-			.inner_html()
-			.await?;
+		let error_block = match find_error_block(driver.clone()).await {
+			Ok(img_elem) => img_elem,
+			Err(e) => {
+				println!("error while searching error block: {}", e);
+				driver.clone().quit().await?;
+				"".to_string()
+			}
+		};
 
-		if no_reviews.contains("Нет отзывов")
-			|| no_reviews.contains("Филиал удалён из справочника")
-			|| no_reviews.contains("Филиал временно не работает")
-			|| no_reviews.contains("Скоро открытие")
+		if error_block.contains("Что-то пошло не так") {
+			driver.refresh().await?;
+		}
+
+		let main_block = match find_main_block(driver.clone()).await {
+			Ok(img_elem) => img_elem,
+			Err(e) => {
+				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+				dbg!(&counter);
+				println!("error while searching main block: {}", e);
+				driver.clone().quit().await?;
+				"".to_string()
+			}
+		};
+
+		if main_block.contains("Нет отзывов")
+			|| main_block.contains("Филиал удалён из справочника")
+			|| main_block.contains("Филиал временно не работает")
+			|| main_block.contains("Скоро открытие")
 		{
 			continue;
 		}
 
-		// let mut not_confirmed_xpath;
 		let mut author_xpath;
 		let mut date_xpath;
 		let mut text_xpath;
@@ -129,7 +151,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		// скролим в цикле
 		for _ in 0..edge {
-			blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div")).all().await?;
+			blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div")).all_from_selector_required().await?;
 			let last = blocks.last().unwrap();
 			last.scroll_into_view().await?;
 			tokio::time::sleep(Duration::from_secs(1)).await;
@@ -137,11 +159,21 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		for (i, block) in blocks.clone().into_iter().enumerate() {
 			let count = i + 1;
-			let block_content = block.inner_html().await?;
+			let block_content = match block.inner_html().await {
+				Ok(elem) => elem,
+				Err(e) => {
+					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+					dbg!(&counter);
+					println!("error while searching author block: {}", e);
+					driver.clone().quit().await?;
+					"".to_string()
+				}
+			};
 
 			if block_content.contains("Неподтвержденные отзывы")
 				|| block_content.contains("Все отзывы")
 				|| block_content.contains("Загрузить еще")
+				|| block_content.contains("официальный ответ")
 				|| block_content.contains("С ответами")
 				|| block_content.contains("Люди говорят")
 				|| block_content.contains("Оцените и оставьте отзыв")
@@ -154,6 +186,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				continue;
 			}
 
+			block.scroll_into_view().await?;
+
 			author_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/span/span[1]/span", count );
 			date_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[1]/div/div[1]/div[2]/div", count );
 			text_xpath = format!("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[{}]/div[3]/div/a", count );
@@ -165,6 +199,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 					dbg!(&counter);
 					println!("error while searching author block: {}", e);
+					driver.clone().quit().await?;
 					"".to_string()
 				}
 			};
@@ -175,6 +210,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 					dbg!(&counter);
 					println!("error while searching date block: {}", e);
+					driver.clone().quit().await?;
 					"".to_string()
 				}
 			};
@@ -185,6 +221,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 					dbg!(&counter);
 					println!("error while searching text block: {}", e);
+					driver.clone().quit().await?;
 					"".to_string()
 				}
 			};
@@ -195,6 +232,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 					dbg!(&counter);
 					println!("error while searching text block: {}", e);
+					driver.clone().quit().await?;
 					"".to_string()
 				}
 			};
@@ -250,6 +288,32 @@ pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebD
 }
 
 pub async fn find_blocks(driver: WebDriver, xpath: String) -> Result<usize, WebDriverError> {
-	let length = driver.query(By::XPath(&xpath)).all().await?.len();
+	let length = driver
+		.query(By::XPath(&xpath))
+		.all_from_selector_required()
+		.await?
+		.len();
 	Ok(length)
+}
+
+pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverError> {
+	let err_block = driver
+		.query(By::Id("root"))
+		.first()
+		.await?
+		.inner_html()
+		.await?;
+
+	Ok(err_block)
+}
+
+pub async fn find_main_block(driver: WebDriver) -> Result<String, WebDriverError> {
+	let block = driver
+			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
+			.first()
+			.await?
+			.inner_html()
+			.await?;
+
+	Ok(block)
 }

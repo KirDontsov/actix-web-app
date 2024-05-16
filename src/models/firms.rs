@@ -1,5 +1,6 @@
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::types::TsVector;
 use uuid::Uuid;
 
 #[allow(non_snake_case)]
@@ -17,7 +18,7 @@ pub struct TwoGisFirm {
 }
 
 #[allow(non_snake_case)]
-#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone, Default)]
+#[derive(Debug, sqlx::FromRow, sqlx::Type, Default)]
 pub struct Firm {
 	pub firm_id: Uuid,
 	pub two_gis_firm_id: Option<String>,
@@ -33,9 +34,8 @@ pub struct Firm {
 	pub default_phone: Option<String>,
 	pub url: Option<String>,
 	pub coords: Option<String>,
-	#[serde(rename = "createdTs")]
+	pub ts: Option<TsVector>,
 	pub created_ts: Option<DateTime<Utc>>,
-	#[serde(rename = "updatedTs")]
 	pub updated_ts: Option<DateTime<Utc>>,
 }
 

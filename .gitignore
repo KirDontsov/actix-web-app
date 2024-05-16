@@ -12,3 +12,6 @@ output/**
 
 # production
 /build
+src/controllers/.DS_Store
+src/.DS_Store
+.DS_Store

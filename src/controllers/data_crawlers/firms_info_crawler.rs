@@ -39,14 +39,17 @@ async fn firms_info_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("55d7ef92-45ca-40df-8e88-4e1a32076367");
 	let table = String::from("two_gis_firms");
-	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
+	let city = "moscow";
+	let category_name = "рестораны";
+
 	let driver = <dyn Driver>::get_driver().await?;
 
 	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
 
 	let category = sqlx::query_as!(
 		Category,
-		"SELECT * FROM categories WHERE abbreviation = 'car_services';",
+		"SELECT * FROM categories WHERE abbreviation = 'restaurants';",
 	)
 	.fetch_one(&data.db)
 	.await
@@ -74,10 +77,27 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		.await
 		.unwrap();
 
-		let mut firms: Vec<SaveFirm> = Vec::new();
-
-		driver.goto(format!("https://2gis.ru/moscow/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}", &firm.two_gis_firm_id.clone().unwrap())).await?;
+		driver
+			.goto(format!(
+				"https://2gis.ru/{}/search/{}/rubricId/164/firm/{}",
+				&city,
+				&category_name,
+				&firm.two_gis_firm_id.clone().unwrap()
+			))
+			.await?;
 		sleep(Duration::from_secs(5)).await;
+
+		let error_block = match find_error_block(driver.clone()).await {
+			Ok(img_elem) => img_elem,
+			Err(e) => {
+				println!("error while searching error block: {}", e);
+				"".to_string()
+			}
+		};
+
+		if error_block.contains("Что-то пошло не так") {
+			driver.refresh().await?;
+		}
 
 		// не запрашиваем информацию о закрытом
 		let main_block = match find_main_block(driver.clone()).await {
@@ -104,7 +124,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		// let mut email_xpath;
 
 		// находим блоки среди которых есть блок с блоками с инфой
-		let blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div")).all().await?;
+		let blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div")).all_from_selector_required().await?;
 		// находим номер блока с блоками с инфой
 		let mut info_block_number = 1;
 		for (i, block) in blocks.clone().into_iter().enumerate() {
@@ -118,7 +138,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		info_blocks_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div", info_block_number);
 
 		// находим блоки с инфой
-		let info_blocks = driver.query(By::XPath(&info_blocks_xpath)).all().await?;
+		let info_blocks = driver
+			.query(By::XPath(&info_blocks_xpath))
+			.all_from_selector_required()
+			.await?;
 		// есть ли доп блок "Уже воспользовались услугами?"
 		let extra_block = driver
 			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[1]"))
@@ -174,13 +197,11 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			}
 		};
 
-		let existed_firm = sqlx::query_as!(
-			Firm,
-			"SELECT * FROM firms WHERE two_gis_firm_id = $1",
-			firm.two_gis_firm_id.clone().unwrap(),
-		)
-		.fetch_one(&data.db)
-		.await;
+		let existed_firm =
+			sqlx::query_as::<_, Firm>("SELECT * FROM firms WHERE two_gis_firm_id = $1")
+				.bind(firm.two_gis_firm_id.clone().unwrap())
+				.fetch_one(&data.db)
+				.await;
 
 		dbg!(&existed_firm);
 
@@ -188,30 +209,28 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		if existed_firm.is_ok() {
 			println!("UPDATE {}", firm.two_gis_firm_id.clone().unwrap());
 
-			let _ = sqlx::query_as!(
-				Firm,
+			let _ = sqlx::query_as::<_, Firm>(
 				r#"UPDATE firms SET coords = $1 WHERE two_gis_firm_id = $2 RETURNING *"#,
-				firm.coords.clone().unwrap(),
-				firm.two_gis_firm_id.clone().unwrap(),
 			)
+			.bind(firm.coords.clone().unwrap())
+			.bind(firm.two_gis_firm_id.clone().unwrap())
 			.fetch_one(&data.db)
 			.await;
 		} else {
 			println!("INSERT {}", firm.two_gis_firm_id.clone().unwrap());
 
-			let _ = sqlx::query_as!(
-				Firm,
-				"INSERT INTO firms (two_gis_firm_id, city_id, category_id, type_id, name, address, default_phone, site, coords) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
-				firm.two_gis_firm_id.clone().unwrap(),
-				city_id.clone(),
-				category.category_id.clone(),
-				type_item.type_id.clone(),
-				firm.name.clone().unwrap(),
-				firm_address.replace("\n", ", "),
-				firm_phone.clone(),
-				firm_site.clone(),
-				firm.coords.clone().unwrap(),
+			let _ = sqlx::query_as::<_, Firm>(
+				"INSERT INTO firms (two_gis_firm_id, city_id, category_id, type_id, name, address, default_phone, site, coords) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *"
 			)
+			.bind(firm.two_gis_firm_id.clone().unwrap())
+			.bind(city_id.clone())
+			.bind(category.category_id.clone())
+			.bind(type_item.type_id.clone())
+			.bind(firm.name.clone().unwrap())
+			.bind(firm_address.replace("\n", ", "))
+			.bind(firm_phone.clone())
+			.bind(firm_site.clone())
+			.bind(firm.coords.clone().unwrap())
 			.fetch_one(&data.db)
 			.await;
 		}
@@ -259,4 +278,15 @@ pub async fn find_tag_block(driver: WebDriver, xpath: String) -> Result<String, 
 		.unwrap_or("".to_string());
 
 	Ok(block)
+}
+
+pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverError> {
+	let err_block = driver
+		.query(By::Id("root"))
+		.first()
+		.await?
+		.inner_html()
+		.await?;
+
+	Ok(err_block)
 }

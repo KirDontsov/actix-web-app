@@ -41,6 +41,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("1e69083b-ef25-43d6-8a08-8e1d2673826e");
 	let table = String::from("firms");
 	let city = "moscow";
+	let category = "рестораны";
 	let empty_field = "address".to_string();
 	let driver = <dyn Driver>::get_driver().await?;
 
@@ -58,10 +59,28 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.unwrap();
 		let mut firms: Vec<UpdateFirmAddress> = Vec::new();
 
-		let url = format!("https://2gis.ru/{}/search/%D0%B0%D0%B2%D1%82%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/firm/{}",&city, &firm.two_gis_firm_id.clone().unwrap());
+		let url = format!(
+			"https://2gis.ru/{}/search/{}/firm/{}",
+			&city,
+			&category,
+			&firm.two_gis_firm_id.clone().unwrap()
+		);
 
 		driver.goto(url).await?;
 		sleep(Duration::from_secs(5)).await;
+
+		let error_block = match find_error_block(driver.clone()).await {
+			Ok(img_elem) => img_elem,
+			Err(e) => {
+				println!("error while searching error block: {}", e);
+				driver.clone().quit().await?;
+				"".to_string()
+			}
+		};
+
+		if error_block.contains("Что-то пошло не так") {
+			driver.refresh().await?;
+		}
 
 		let blocks = match find_address_blocks(
 			driver.clone(),
@@ -72,6 +91,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			Ok(elem) => elem,
 			Err(e) => {
 				println!("error while searching firm_site block: {}", e);
+				driver.clone().quit().await?;
 				[].to_vec()
 			}
 		};
@@ -102,12 +122,11 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		// запись в бд
 		for firm in firms {
-			let _ = sqlx::query_as!(
-				Firm,
+			let _ = sqlx::query_as::<_, Firm>(
 				r#"UPDATE firms SET address = $1 WHERE firm_id = $2 RETURNING *"#,
-				firm.address,
-				firm.firm_id,
 			)
+			.bind(&firm.address)
+			.bind(&firm.firm_id)
 			.fetch_one(&data.db)
 			.await;
 
@@ -147,9 +166,9 @@ pub async fn find_address_blocks(
 	Ok(block)
 }
 
-pub async fn find_main_block(driver: WebDriver) -> Result<String, WebDriverError> {
+pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverError> {
 	let err_block = driver
-		.query(By::ClassName("_18lzknl"))
+		.query(By::Id("root"))
 		.first()
 		.await?
 		.inner_html()
