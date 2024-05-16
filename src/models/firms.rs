@@ -61,6 +61,7 @@ pub struct FilteredFirm {
 	pub firm_id: String,
 	pub two_gis_firm_id: Option<String>,
 	pub category_id: String,
+	pub city_id: String,
 	pub name: Option<String>,
 	pub description: Option<String>,
 	pub address: Option<String>,
