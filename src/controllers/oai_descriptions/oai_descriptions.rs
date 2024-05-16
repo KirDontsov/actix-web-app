@@ -83,22 +83,34 @@ async fn get_oai_description_by_url_handler(
 ) -> impl Responder {
 	let firm_url = &path.into_inner();
 	let firm_query_result = Firm::get_firm_by_url(&data.db, &firm_url).await;
-	let firm = firm_query_result.unwrap();
+	let firm_message = "Что-то пошло не так во время чтения get_firm_by_url";
+	if firm_query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": &firm_message}));
+	}
+	let firm = firm_query_result.expect(&firm_message);
 	let firm_id = firm.firm_id;
 
-	let description = sqlx::query_as!(
+	let query_result = sqlx::query_as!(
 		OAIDescription,
 		"SELECT * FROM oai_descriptions WHERE firm_id = $1",
 		firm_id
 	)
 	.fetch_one(&data.db)
-	.await
-	.unwrap();
+	.await;
+
+	let message = "Что-то пошло не так во время чтения oai_description";
+	if query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": &message}));
+	}
+
+	let oai_description = query_result.expect(&message);
 
 	let json_response = json!({
 		"status":  "success",
 		"data": json!({
-			"oai_description": filter_oai_description_record(&description)
+			"oai_description": filter_oai_description_record(&oai_description)
 		})
 	});
 

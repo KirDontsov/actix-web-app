@@ -70,8 +70,8 @@ impl Count {
 		field_name: String,
 	) -> Result<i64, CustomError> {
 		let sql = format!(
-			"SELECT count(*) AS count FROM {} WHERE {} = ''",
-			&table_name, &field_name
+			"SELECT count(*) AS count FROM {} WHERE {} = '' OR {} IS NULL",
+			&table_name, &field_name, &field_name
 		);
 		let count_query_result = sqlx::query_as::<_, Count>(&sql).fetch_one(db).await;
 

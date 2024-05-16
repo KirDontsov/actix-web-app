@@ -14,6 +14,7 @@ pub struct Count {
 
 #[derive(Deserialize, Debug)]
 pub struct FilterExtOptions {
+	pub input: Option<String>,
 	pub city_id: Option<String>,
 	pub category_id: Option<String>,
 	// pub type_id: Option<String>,

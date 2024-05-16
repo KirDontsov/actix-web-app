@@ -49,7 +49,12 @@ async fn get_images_by_url_handler(
 	let table = String::from("images");
 	let firm_url = &path.into_inner();
 	let firm_query_result = Firm::get_firm_by_url(&data.db, &firm_url).await;
-	let firm = firm_query_result.unwrap();
+	let firm_message = "Что-то пошло не так во время чтения get_firm_by_url";
+	if firm_query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": &firm_message}));
+	}
+	let firm = firm_query_result.expect(&firm_message);
 	let firm_id = firm.firm_id;
 
 	let query_result = sqlx::query_as!(Image, "SELECT * FROM images WHERE firm_id = $1", firm_id)

@@ -37,6 +37,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// .service(images_processing_handler)
 		// .service(reviews_processing_handler)
 		// .service(description_processing_handler)
+		// .service(sitemap_processing_handler)
 		//user
 		.service(get_users_handler)
 		.service(get_user_handler)
@@ -46,11 +47,10 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_quote_handler)
 		.service(add_quote_handler)
 		// firm
-		.service(get_firms_handler)
 		.service(get_firms_by_abbr_handler)
 		.service(get_firms_by_abbr_for_map_handler)
 		.service(get_firm_by_url_handler)
-		.service(get_firm_handler)
+		.service(get_firms_search_handler)
 		// cities
 		.service(get_city_handler)
 		.service(get_cities_handler)
@@ -64,7 +64,6 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_reviews_handler)
 		.service(get_reviews_by_url_handler)
 		.service(add_review_handler)
-		.service(get_oai_reviews_handler)
 		.service(get_oai_reviews_by_url_handler)
 		// description
 		.service(get_oai_description_by_firm_handler)
