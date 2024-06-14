@@ -19,13 +19,14 @@ async fn firms_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let driver = <dyn Driver>::get_driver().await?;
-	let city = "moscow";
-	let category = "рестораны";
+	let city = "spb";
+	let category = "клуб";
+	let rubric_id = "173";
 
 	// автосервисы
 	let url = format!(
-		"https://2gis.ru/{}/search/{}/rubricId/164",
-		&city, &category
+		"https://2gis.ru/{}/search/{}/rubricId/{}",
+		&city, &category, &rubric_id
 	);
 	// рестораны
 	// let url = format!("https://2gis.ru/{}/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/rubricId/164?m=37.62017%2C55.753466%2F11", &city);
@@ -76,7 +77,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let mut name_xpath;
 
 		// номер страницы после которой все упало
-		if j >= 309 {
+		if j >= 0 {
 			for (i, firm_elem) in firms_elem.clone().into_iter().enumerate() {
 				println!("фирма: {}", &i);
 

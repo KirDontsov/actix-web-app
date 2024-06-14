@@ -40,9 +40,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("4bb99137-6c90-42e6-8385-83c522cde804");
 	let table = String::from("firms");
 	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
-	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
+	let category_id = uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").unwrap();
 	let city = "spb";
-	let category = "рестораны";
+	let category_name = "клуб";
+	let rubric_id = "173";
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
@@ -82,7 +83,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.goto(format!(
 				"https://2gis.ru/{}/search/{}/firm/{}/tab/reviews",
 				&city,
-				&category,
+				&category_name,
 				&firm.two_gis_firm_id.clone().unwrap()
 			))
 			.await?;

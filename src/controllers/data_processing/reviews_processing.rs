@@ -78,12 +78,12 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let auth_header_val = format!("Bearer {}", oai_token);
 	let table = String::from("firms");
 	let city_id =
-		uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").expect("city_id not set");
+		uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").expect("city_id not set");
 	let category_id =
-		uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").expect("category_id not set");
+		uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").expect("category_id not set");
 
-	// let city = "spb";
-	// let category = "рестораны";
+	// let city = "moscow";
+	// let category = "клубы";
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)

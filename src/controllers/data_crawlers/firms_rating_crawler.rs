@@ -1,7 +1,7 @@
 use crate::{
 	api::Driver,
 	jwt_auth,
-	models::{Count, Firm, UpdateFirmAddress},
+	models::{Count, Firm, UpdateFirmRating},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -10,8 +10,8 @@ use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 
 #[allow(unreachable_code)]
-#[get("/crawler/address")]
-async fn firms_address_crawler_handler(
+#[get("/crawler/rating")]
+async fn firms_rating_crawler_handler(
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
@@ -38,7 +38,7 @@ async fn firms_address_crawler_handler(
 }
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
-	let counter_id: String = String::from("1e69083b-ef25-43d6-8a08-8e1d2673826e");
+	let counter_id: String = String::from("ff8641c7-8956-4d5d-bd45-4f90633415e6");
 	let table = String::from("firms");
 	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
 	let category_id = uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").unwrap();
@@ -46,9 +46,9 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let category_name = "клуб";
 	let rubric_id = "173";
 
-	let empty_field = "address".to_string();
+	let empty_field = "rating".to_string();
 
-	let driver = <dyn Driver>::get_driver().await?;
+
 
 	let firms_count =
 		Count::count_firms_with_empty_field(&data.db, table.clone(), empty_field.clone())
@@ -58,11 +58,16 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
 
+	let driver = <dyn Driver>::get_driver().await?;
+
 	for j in start.clone()..=firms_count {
+		println!("№ {}", &j + 1);
+
 		let firm = Firm::get_firm_with_empty_field(&data.db, table.clone(), empty_field.clone(), j)
 			.await
 			.unwrap();
-		let mut firms: Vec<UpdateFirmAddress> = Vec::new();
+		let mut firms: Vec<UpdateFirmRating> = Vec::new();
+
 
 		let url = format!(
 			"https://2gis.ru/{}/search/{}/firm/{}",
@@ -87,60 +92,35 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			driver.refresh().await?;
 		}
 
-		let blocks = match find_address_blocks(
-			driver.clone(),
-			"//div[contains(@class, \"_49kxlr\")]".to_string(),
-		)
-		.await
-		{
-			Ok(elem) => elem,
+		// _y10azs
+
+		let rating = match find_rating_blocks(driver.clone(), "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[1]/div[4]/div/div[2]".to_string(), "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[1]/div[4]/div/div[contains(@class, \"_y10azs\")]".to_string()).await {
+			Ok(elem) => {
+				elem.replace("Реклама", "").replace("Заказать доставку
+Заказать онлайн", "").replace("Заказать доставку", "").replace("Заказать онлайн", "").replace("Забронировать онлайн", "").replace("Забронировать", "")
+			},
 			Err(e) => {
-				println!("error while searching firm_site block: {}", e);
+				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+				dbg!(&counter);
+				println!("error while searching text block: {}", e);
 				driver.clone().quit().await?;
-				[].to_vec()
+				"".to_string()
 			}
 		};
 
-		let mut address = "".to_string();
-
-		for block in blocks {
-			let block_content = block.inner_html().await?;
-			if block_content.contains("Оформить") {
-				continue;
-			}
-
-			// if block_content.contains("этаж")
-			// 	|| block_content.contains("Москва")
-			// 	|| block_content.contains("Санкт-Петербург")
-			// {
-			// 	address = block.text().await?;
-			// 	break;
-			// }
-			address = block.text().await?;
-			break;
-		}
-
-		firms.push(UpdateFirmAddress {
-			firm_id: firm.firm_id.clone(),
-			address: address.clone().replace("\n", ", "),
-		});
+		println!("{}", rating.clone());
 
 		// запись в бд
-		for firm in firms {
-			let _ = sqlx::query_as::<_, Firm>(
-				r#"UPDATE firms SET address = $1 WHERE firm_id = $2 RETURNING *"#,
-			)
-			.bind(&firm.address)
-			.bind(&firm.firm_id)
-			.fetch_one(&data.db)
-			.await;
+		let _ = sqlx::query_as::<_, Firm>(
+			r#"UPDATE firms SET rating = $1 WHERE firm_id = $2 RETURNING *"#,
+		)
+		.bind(rating.clone())
+		.bind(&firm.firm_id)
+		.fetch_one(&data.db)
+		.await;
 
-			dbg!(&firm);
-		}
 		// обновляем в базе счетчик
-		// let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
-
-		println!("№ {}", &j + 1);
+		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 	}
 
 	driver.clone().quit().await?;
@@ -159,14 +139,24 @@ pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebD
 	Ok(block)
 }
 
-pub async fn find_address_blocks(
-	driver: WebDriver,
-	xpath: String,
-) -> Result<Vec<WebElement>, WebDriverError> {
-	let block = driver
+pub async fn find_rating_blocks(driver: WebDriver, xpath: String, second_xpath: String) -> Result<String, WebDriverError> {
+	let exists = driver
 		.query(By::XPath(&xpath))
-		.all_from_selector_required()
+		.or(By::XPath(&second_xpath))
+		.exists()
 		.await?;
+
+	let mut block = String::new();
+
+	if exists {
+		block = driver
+			.query(By::XPath(&xpath))
+			.or(By::XPath(&second_xpath))
+			.first()
+			.await?
+			.text()
+			.await?;
+	}
 
 	Ok(block)
 }

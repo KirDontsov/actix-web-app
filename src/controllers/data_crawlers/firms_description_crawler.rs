@@ -10,7 +10,7 @@ use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 
 #[allow(unreachable_code)]
-#[get("/crawler/descriptions")]
+#[get("/crawler/description")]
 async fn firms_description_crawler_handler(
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
@@ -40,10 +40,12 @@ async fn firms_description_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("7711da84-7d98-4072-aa35-b642c7ac0762");
 	let table = String::from("firms");
-	// let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").expect("city_id not set");
-	// let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").expect("category_id not set");
-	let city = "moscow";
-	let category = "рестораны";
+	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
+	let category_id = uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").unwrap();
+	let city = "spb";
+	let category_name = "клуб";
+	let rubric_id = "173";
+
 	let driver = <dyn Driver>::get_driver().await?;
 
 	let firms_count =
@@ -74,7 +76,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let url = format!(
 			"https://2gis.ru/{}/search/{}/firm/{}/tab/info",
 			&city,
-			&category,
+			&category_name,
 			&firm.two_gis_firm_id.clone().unwrap()
 		);
 

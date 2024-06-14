@@ -1,6 +1,8 @@
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::types::TsVector;
+use sqlx::{decode::Decode, postgres::PgValueRef, types::Type, Postgres};
+use std::error::Error;
 use uuid::Uuid;
 
 #[allow(non_snake_case)]
@@ -21,10 +23,10 @@ pub struct TwoGisFirm {
 #[derive(Debug, sqlx::FromRow, sqlx::Type, Default)]
 pub struct Firm {
 	pub firm_id: Uuid,
-	pub two_gis_firm_id: Option<String>,
 	pub category_id: Uuid,
 	pub type_id: Uuid,
 	pub city_id: Uuid,
+	pub two_gis_firm_id: Option<String>,
 	pub name: Option<String>,
 	pub description: Option<String>,
 	pub address: Option<String>,
@@ -33,6 +35,7 @@ pub struct Firm {
 	pub default_email: Option<String>,
 	pub default_phone: Option<String>,
 	pub url: Option<String>,
+	pub rating: Option<String>,
 	pub coords: Option<String>,
 	pub ts: Option<TsVector>,
 	pub created_ts: Option<DateTime<Utc>>,
@@ -66,6 +69,7 @@ pub struct FilteredFirm {
 	pub description: Option<String>,
 	pub address: Option<String>,
 	pub site: Option<String>,
+	pub rating: Option<String>,
 	pub default_phone: Option<String>,
 	pub url: Option<String>,
 	pub coords: Option<String>,
@@ -110,4 +114,11 @@ pub struct ExtFilteredFirmWithOaiDescription {
 pub struct UpdateFirmAddress {
 	pub firm_id: Uuid,
 	pub address: String,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct UpdateFirmRating {
+	pub firm_id: Uuid,
+	pub rating: String,
 }

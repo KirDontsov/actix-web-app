@@ -31,6 +31,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// .service(firms_images_crawler_handler)
 		// .service(firms_prices_crawler_handler)
 		// .service(firms_address_crawler_handler)
+		// .service(firms_rating_crawler_handler)
 		// .service(mir_far_crawler_handler)
 		// processing
 		// .service(urls_processing_handler)
