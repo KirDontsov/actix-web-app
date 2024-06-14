@@ -15,7 +15,8 @@ impl Firm {
 			"
 			SELECT * FROM {}
 			WHERE city_id = '{}' AND category_id = '{}'
-			ORDER BY two_gis_firm_id LIMIT 1 OFFSET '{}';
+			ORDER BY rating DESC 
+			LIMIT 1 OFFSET '{}';
 			",
 			&table_name, &city_id, &category_id, &n,
 		);
@@ -40,7 +41,8 @@ impl Firm {
 			"
 			SELECT * FROM {}
 			WHERE {} = '' OR {} IS NULL
-			ORDER BY two_gis_firm_id LIMIT 1 OFFSET '{}';
+			ORDER BY rating DESC 
+			LIMIT 1 OFFSET '{}';
 			",
 			&table_name, &field_name, &field_name, &n,
 		);
