@@ -40,8 +40,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("55d7ef92-45ca-40df-8e88-4e1a32076367");
 	let table = String::from("two_gis_firms");
 	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
-	let city = "moscow";
-	let category_name = "рестораны";
+	let category_id = uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").unwrap();
+	let city = "spb";
+	let category_name = "клуб";
+	let rubric_id = "173";
 
 	let driver = <dyn Driver>::get_driver().await?;
 
@@ -49,7 +51,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	let category = sqlx::query_as!(
 		Category,
-		"SELECT * FROM categories WHERE abbreviation = 'restaurants';",
+		"SELECT * FROM categories WHERE abbreviation = 'clubs';",
 	)
 	.fetch_one(&data.db)
 	.await
@@ -79,9 +81,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		driver
 			.goto(format!(
-				"https://2gis.ru/{}/search/{}/rubricId/164/firm/{}",
+				"https://2gis.ru/{}/search/{}/rubricId/{}/firm/{}",
 				&city,
 				&category_name,
+				&rubric_id,
 				&firm.two_gis_firm_id.clone().unwrap()
 			))
 			.await?;

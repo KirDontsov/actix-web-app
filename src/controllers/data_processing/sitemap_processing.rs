@@ -32,8 +32,10 @@ async fn sitemap_processing_handler(
 
 async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("565ad1cb-b891-4185-ac75-24ab3898cf22").unwrap();
+	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
+	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
+	let city = "spb";
+	let category = "рестораны";
 
 	let city = sqlx::query_as!(
 		City,

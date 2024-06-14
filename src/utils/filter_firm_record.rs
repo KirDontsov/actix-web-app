@@ -12,12 +12,14 @@ pub fn filter_firm_record(firm: &Firm) -> FilteredFirm {
 		description: firm.description.to_owned(),
 		address: firm.address.to_owned(),
 		site: firm.site.to_owned(),
+		rating: firm.rating.to_owned(),
 		default_phone: firm.default_phone.to_owned(),
 		url: firm.url.to_owned(),
 		coords: firm.coords.to_owned(),
 	}
 }
 
+// depricated
 pub fn filter_ext_firm_record(
 	firm: &ExtFirmWithOaiDescription,
 ) -> ExtFilteredFirmWithOaiDescription {

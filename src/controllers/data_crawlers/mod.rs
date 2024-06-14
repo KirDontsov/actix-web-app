@@ -5,6 +5,7 @@ pub mod firms_images_crawler;
 pub mod firms_info_crawler;
 pub mod firms_prices_crawler;
 pub mod firms_reviews_crawler;
+pub mod firms_rating_crawler;
 pub mod mir_far;
 
 pub use self::firms_address_crawler::firms_address_crawler_handler;
@@ -15,3 +16,4 @@ pub use self::firms_info_crawler::firms_info_crawler_handler;
 pub use self::firms_prices_crawler::firms_prices_crawler_handler;
 pub use self::firms_reviews_crawler::firms_reviews_crawler_handler;
 pub use self::mir_far::mir_far_crawler_handler;
+pub use self::firms_rating_crawler::firms_rating_crawler_handler;
