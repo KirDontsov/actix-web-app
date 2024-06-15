@@ -122,3 +122,21 @@ pub struct UpdateFirmRating {
 	pub firm_id: Uuid,
 	pub rating: String,
 }
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct FirmForMap {
+	pub name: Option<String>,
+	pub address: Option<String>,
+	pub url: Option<String>,
+	pub coords: Option<String>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct FilteredFirmForMap {
+	pub name: Option<String>,
+	pub address: Option<String>,
+	pub url: Option<String>,
+	pub coords: Option<String>,
+}

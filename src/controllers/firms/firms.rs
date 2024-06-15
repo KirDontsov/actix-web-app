@@ -1,6 +1,6 @@
 use crate::{
-	models::{Category, City, Count, FilterExtOptions, FilteredFirm, Firm},
-	utils::filter_firm_record::filter_firm_record,
+	models::{Category, City, Count, FilterExtOptions, FilteredFirm, Firm, FilteredFirmForMap},
+	utils::filter_firm_record::{filter_firm_record, filter_firm_for_map_record},
 	AppState,
 };
 use actix_web::{
@@ -158,7 +158,7 @@ async fn get_firms_by_abbr_for_map_handler(
 	let json_response = json!({
 		"status":  "success",
 		"data": json!({
-			"firms": &firms.into_iter().map(|firm| filter_firm_record(&firm)).collect::<Vec<FilteredFirm>>(),
+			"firms": &firms.into_iter().map(|firm| filter_firm_for_map_record(&firm)).collect::<Vec<FilteredFirmForMap>>(),
 			"firms_count": &firms_count
 		})
 	});

@@ -1,5 +1,5 @@
 use crate::models::{
-	ExtFilteredFirmWithOaiDescription, ExtFirmWithOaiDescription, FilteredFirm, Firm,
+	ExtFilteredFirmWithOaiDescription, ExtFirmWithOaiDescription, FilteredFirm, Firm, FirmForMap, FilteredFirmForMap
 };
 
 pub fn filter_firm_record(firm: &Firm) -> FilteredFirm {
@@ -32,5 +32,14 @@ pub fn filter_ext_firm_record(
 		default_phone: firm.default_phone.to_owned(),
 		oai_description_value: firm.oai_description_value.to_owned(),
 		description: firm.description.to_owned(),
+	}
+}
+
+pub fn filter_firm_for_map_record(firm: &FirmForMap) -> FilteredFirmForMap {
+	FilteredFirmForMap {
+		name: firm.name.to_owned(),
+		address: firm.address.to_owned(),
+		url: firm.url.to_owned(),
+		coords: firm.coords.to_owned(),
 	}
 }
