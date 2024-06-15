@@ -1,7 +1,7 @@
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
-use crate::{api::CustomError, models::Firm};
+use crate::{api::CustomError, models::{Firm, FirmForMap}};
 
 impl Firm {
 	pub async fn get_firm_by_city_category(
@@ -15,7 +15,7 @@ impl Firm {
 			"
 			SELECT * FROM {}
 			WHERE city_id = '{}' AND category_id = '{}'
-			ORDER BY rating DESC 
+			ORDER BY rating DESC, two_gis_firm_id
 			LIMIT 1 OFFSET '{}';
 			",
 			&table_name, &city_id, &category_id, &n,
@@ -41,7 +41,7 @@ impl Firm {
 			"
 			SELECT * FROM {}
 			WHERE {} = '' OR {} IS NULL
-			ORDER BY rating DESC 
+			ORDER BY rating DESC, two_gis_firm_id
 			LIMIT 1 OFFSET '{}';
 			",
 			&table_name, &field_name, &field_name, &n,
@@ -81,7 +81,7 @@ impl Firm {
 			"SELECT * FROM firms
 			WHERE city_id = $1
 			AND category_id = $2
-			ORDER BY rating DESC
+			ORDER BY rating DESC, two_gis_firm_id
 		 	LIMIT $3 OFFSET $4",
 		)
 		.bind(city_id)
@@ -104,12 +104,11 @@ impl Firm {
 		db: &Pool<Postgres>,
 		city_id: Uuid,
 		category_id: Uuid,
-	) -> Result<Vec<Self>, CustomError> {
-		let query_result = sqlx::query_as::<_, Firm>(
-			"SELECT * FROM firms
+	) -> Result<Vec<FirmForMap>, CustomError> {
+		let query_result = sqlx::query_as::<_, FirmForMap>(
+			"SELECT name, address, coords, url FROM firms
 			WHERE city_id = $1
-			AND category_id = $2
-			ORDER BY rating DESC",
+			AND category_id = $2",
 		)
 		.bind(city_id)
 		.bind(category_id)
