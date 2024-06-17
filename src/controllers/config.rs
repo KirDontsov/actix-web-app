@@ -39,6 +39,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// .service(reviews_processing_handler)
 		// .service(description_processing_handler)
 		// .service(sitemap_processing_handler)
+		// .service(reviews_count_processing_handler)
 		//user
 		.service(get_users_handler)
 		.service(get_user_handler)

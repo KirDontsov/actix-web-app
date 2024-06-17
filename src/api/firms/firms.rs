@@ -15,7 +15,7 @@ impl Firm {
 			"
 			SELECT * FROM {}
 			WHERE city_id = '{}' AND category_id = '{}'
-			ORDER BY rating DESC, two_gis_firm_id
+			ORDER BY rating DESC, reviews_count::int DESC
 			LIMIT 1 OFFSET '{}';
 			",
 			&table_name, &city_id, &category_id, &n,
@@ -41,7 +41,7 @@ impl Firm {
 			"
 			SELECT * FROM {}
 			WHERE {} = '' OR {} IS NULL
-			ORDER BY rating DESC, two_gis_firm_id
+			ORDER BY rating DESC, reviews_count::int DESC
 			LIMIT 1 OFFSET '{}';
 			",
 			&table_name, &field_name, &field_name, &n,
@@ -81,7 +81,7 @@ impl Firm {
 			"SELECT * FROM firms
 			WHERE city_id = $1
 			AND category_id = $2
-			ORDER BY rating DESC, two_gis_firm_id
+			ORDER BY rating DESC, reviews_count::int DESC
 		 	LIMIT $3 OFFSET $4",
 		)
 		.bind(city_id)
@@ -108,7 +108,8 @@ impl Firm {
 		let query_result = sqlx::query_as::<_, FirmForMap>(
 			"SELECT name, address, coords, url FROM firms
 			WHERE city_id = $1
-			AND category_id = $2",
+			AND category_id = $2
+			ORDER BY rating DESC, reviews_count::int DESC",
 		)
 		.bind(city_id)
 		.bind(category_id)
