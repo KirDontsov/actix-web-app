@@ -1,7 +1,10 @@
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
 
-use crate::{api::CustomError, models::{Firm, FirmForMap}};
+use crate::{
+	api::CustomError,
+	models::{Firm, FirmForMap},
+};
 
 impl Firm {
 	pub async fn get_firm_by_city_category(

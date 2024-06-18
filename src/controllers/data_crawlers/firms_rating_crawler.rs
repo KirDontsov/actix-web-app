@@ -48,8 +48,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	let empty_field = "rating".to_string();
 
-
-
 	let firms_count =
 		Count::count_firms_with_empty_field(&data.db, table.clone(), empty_field.clone())
 			.await
@@ -67,7 +65,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.await
 			.unwrap();
 		let mut firms: Vec<UpdateFirmRating> = Vec::new();
-
 
 		let url = format!(
 			"https://2gis.ru/{}/search/{}/firm/{}",
@@ -139,7 +136,11 @@ pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebD
 	Ok(block)
 }
 
-pub async fn find_rating_blocks(driver: WebDriver, xpath: String, second_xpath: String) -> Result<String, WebDriverError> {
+pub async fn find_rating_blocks(
+	driver: WebDriver,
+	xpath: String,
+	second_xpath: String,
+) -> Result<String, WebDriverError> {
 	let exists = driver
 		.query(By::XPath(&xpath))
 		.or(By::XPath(&second_xpath))

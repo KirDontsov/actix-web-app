@@ -29,16 +29,24 @@ async fn reviews_count_processing_handler(
 async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
 	let table_name = String::from("firms");
 
-	let firms_count =
-		Count::count_firms_with_empty_field(&data.db, table_name.clone(), "reviews_count".to_string())
-			.await
-			.unwrap_or(0);
+	let firms_count = Count::count_firms_with_empty_field(
+		&data.db,
+		table_name.clone(),
+		"reviews_count".to_string(),
+	)
+	.await
+	.unwrap_or(0);
 
 	for j in 0..=firms_count {
 		println!("№ {}", &j);
-		let firm = Firm::get_firm_with_empty_field(&data.db, table_name.clone(), "reviews_count".to_string(), j)
-			.await
-			.unwrap();
+		let firm = Firm::get_firm_with_empty_field(
+			&data.db,
+			table_name.clone(),
+			"reviews_count".to_string(),
+			j,
+		)
+		.await
+		.unwrap();
 
 		if firm.reviews_count.clone().is_some() {
 			continue;
@@ -54,9 +62,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 		let reviews_count = match count_query_result {
 			Ok(x) => x,
-		 	Err(_) => Count {
-					count: Some(0_i64)
-				},
+			Err(_) => Count { count: Some(0_i64) },
 		};
 
 		let _ = sqlx::query_as::<_, Firm>(
