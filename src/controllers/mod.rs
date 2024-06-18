@@ -8,6 +8,7 @@ pub mod firms;
 pub mod images;
 pub mod oai_descriptions;
 pub mod oai_reviews;
+pub mod pages;
 pub mod prices;
 pub mod quotes;
 pub mod reviews;

@@ -1,6 +1,6 @@
 use crate::{
-	models::{Category, City, Count, FilterExtOptions, FilteredFirm, Firm, FilteredFirmForMap},
-	utils::filter_firm_record::{filter_firm_record, filter_firm_for_map_record},
+	models::{Category, City, Count, FilterExtOptions, FilteredFirm, FilteredFirmForMap, Firm},
+	utils::filter_firm_record::{filter_firm_for_map_record, filter_firm_record},
 	AppState,
 };
 use actix_web::{

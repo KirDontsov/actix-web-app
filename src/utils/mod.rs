@@ -8,6 +8,7 @@ pub mod filter_quote_record;
 pub mod filter_review_record;
 pub mod filter_type_record;
 pub mod filter_user_record;
+pub mod pages;
 pub mod prices;
 pub mod transliterate;
 
@@ -21,5 +22,6 @@ pub use self::filter_quote_record::filter_quote_record;
 pub use self::filter_review_record::*;
 pub use self::filter_type_record::filter_type_record;
 pub use self::filter_user_record::filter_user_record;
+pub use self::pages::*;
 pub use self::prices::*;
 pub use self::transliterate::*;

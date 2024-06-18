@@ -9,6 +9,7 @@ use crate::controllers::firms::*;
 use crate::controllers::images::*;
 use crate::controllers::oai_descriptions::*;
 use crate::controllers::oai_reviews::*;
+use crate::controllers::pages::*;
 use crate::controllers::prices::*;
 use crate::controllers::quotes::*;
 use crate::controllers::reviews::*;
@@ -75,7 +76,10 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_images_by_url_handler)
 		// prices
 		.service(get_prices_handler)
-		.service(get_prices_by_url_handler);
+		.service(get_prices_by_url_handler)
+		// pages
+		.service(get_page_by_url_handler)
+		.service(get_pages_handler);
 
 	conf.service(scope);
 }
