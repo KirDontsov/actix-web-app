@@ -7,7 +7,7 @@ pub struct City {
 	pub name: Option<String>,
 	pub abbreviation: Option<String>,
 	pub coords: Option<String>,
-	pub is_active: Option<bool>,
+	pub is_active: Option<String>,
 }
 
 #[allow(non_snake_case)]
@@ -24,5 +24,5 @@ pub struct FilteredCity {
 	pub name: Option<String>,
 	pub abbreviation: Option<String>,
 	pub coords: Option<String>,
-	pub is_active: Option<bool>,
+	pub is_active: Option<String>,
 }
