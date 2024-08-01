@@ -40,11 +40,11 @@ async fn firms_rating_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("ff8641c7-8956-4d5d-bd45-4f90633415e6");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
-	let category_id = uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").unwrap();
-	let city = "spb";
-	let category_name = "клуб";
-	let rubric_id = "173";
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
+	let city = "moscow";
+	let category_name = "школы";
+	let rubric_id = "245";
 
 	let empty_field = "rating".to_string();
 
@@ -64,7 +64,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let firm = Firm::get_firm_with_empty_field(&data.db, table.clone(), empty_field.clone(), j)
 			.await
 			.unwrap();
-		let mut firms: Vec<UpdateFirmRating> = Vec::new();
 
 		let url = format!(
 			"https://2gis.ru/{}/search/{}/firm/{}",
@@ -89,16 +88,12 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			driver.refresh().await?;
 		}
 
-		// _y10azs
-
-		let rating = match find_rating_blocks(driver.clone(), "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[1]/div[4]/div/div[2]".to_string(), "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[1]/div[4]/div/div[contains(@class, \"_y10azs\")]".to_string()).await {
+		let rating = match find_rating_blocks(driver.clone(), "//body/div/div/div/div/div/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[1]/div[4]/div/div[2]".to_string(), "//body/div/div/div/div/div/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[1]/div[4]/div/div[contains(@class, \"_y10azs\")]".to_string()).await {
 			Ok(elem) => {
 				elem.replace("Реклама", "").replace("Заказать доставку
 Заказать онлайн", "").replace("Заказать доставку", "").replace("Заказать онлайн", "").replace("Забронировать онлайн", "").replace("Забронировать", "")
 			},
 			Err(e) => {
-				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
-				dbg!(&counter);
 				println!("error while searching text block: {}", e);
 				driver.clone().quit().await?;
 				"".to_string()
@@ -117,23 +112,12 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		.await;
 
 		// обновляем в базе счетчик
-		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+		// let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 	}
 
 	driver.clone().quit().await?;
 
 	Ok(())
-}
-
-pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
-	let block = driver
-		.query(By::XPath(&xpath))
-		.first()
-		.await?
-		.text()
-		.await?;
-
-	Ok(block)
 }
 
 pub async fn find_rating_blocks(
@@ -144,6 +128,7 @@ pub async fn find_rating_blocks(
 	let exists = driver
 		.query(By::XPath(&xpath))
 		.or(By::XPath(&second_xpath))
+		.nowait()
 		.exists()
 		.await?;
 
@@ -153,6 +138,7 @@ pub async fn find_rating_blocks(
 		block = driver
 			.query(By::XPath(&xpath))
 			.or(By::XPath(&second_xpath))
+			.nowait()
 			.first()
 			.await?
 			.text()
@@ -165,6 +151,7 @@ pub async fn find_rating_blocks(
 pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverError> {
 	let err_block = driver
 		.query(By::Id("root"))
+		.nowait()
 		.first()
 		.await?
 		.inner_html()

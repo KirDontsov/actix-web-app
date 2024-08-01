@@ -40,18 +40,22 @@ async fn firms_address_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("1e69083b-ef25-43d6-8a08-8e1d2673826e");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
-	let category_id = uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").unwrap();
-	let city = "spb";
-	let category_name = "клуб";
-	let rubric_id = "173";
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
+	let city = "moscow";
+	let category_name = "школы";
+	let rubric_id = "245";
 
 	let empty_field = "address".to_string();
 
 	let driver = <dyn Driver>::get_driver().await?;
 
 	let firms_count =
-		Count::count_firms_with_empty_field(&data.db, table.clone(), empty_field.clone())
+		// Count::count_firms_with_empty_field(&data.db, table.clone(), empty_field.clone())
+		// 	.await
+		// 	.unwrap_or(0);
+
+		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
 			.await
 			.unwrap_or(0);
 
@@ -59,9 +63,15 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let start = get_counter(&data.db, &counter_id).await;
 
 	for j in start.clone()..=firms_count {
-		let firm = Firm::get_firm_with_empty_field(&data.db, table.clone(), empty_field.clone(), j)
-			.await
-			.unwrap();
+		let firm =
+			// Firm::get_firm_with_empty_field(&data.db, table.clone(), empty_field.clone(), j)
+			// .await
+			// .unwrap();
+
+			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+				.await
+				.unwrap();
+
 		let mut firms: Vec<UpdateFirmAddress> = Vec::new();
 
 		let url = format!(
@@ -105,19 +115,32 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		for block in blocks {
 			let block_content = block.inner_html().await?;
-			if block_content.contains("Оформить") {
+			if block_content.contains("Оформить")
+				|| block_content.contains("↗")
+				|| block_content.contains("Инфо")
+				|| block_content.contains("Отзывы")
+				|| block_content.contains("Меню")
+				|| block_content.contains("Фото")
+			{
 				continue;
 			}
 
-			// if block_content.contains("этаж")
-			// 	|| block_content.contains("Москва")
-			// 	|| block_content.contains("Санкт-Петербург")
-			// {
-			// 	address = block.text().await?;
-			// 	break;
-			// }
-			address = block.text().await?;
+			let street_address = find_block(block.clone(), "_2lcm958".to_string()).await;
+			let city_address = find_block(block.clone(), "_1p8iqzw".to_string()).await;
+
+			let address_array = vec![street_address, city_address];
+
+			address = address_array
+				.into_iter()
+				.collect::<Vec<String>>()
+				.join(", ");
+
+			// берем только превый блок и прерываем цикл
 			break;
+		}
+
+		if address == ", ".to_string() {
+			continue;
 		}
 
 		firms.push(UpdateFirmAddress {
@@ -148,15 +171,24 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	Ok(())
 }
 
-pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
-	let block = driver
-		.query(By::XPath(&xpath))
-		.first()
-		.await?
-		.text()
-		.await?;
+pub async fn find_block(elem: WebElement, xpath: String) -> String {
+	let block_arr = match elem.find_all(By::ClassName(&xpath)).await {
+		Ok(block_elem) => block_elem,
+		Err(e) => {
+			println!("error while searching block: {}", e);
+			Vec::<WebElement>::new()
+		}
+	};
 
-	Ok(block)
+	let res = match block_arr.get(0).unwrap_or(&elem).text().await {
+		Ok(block_elem) => block_elem,
+		Err(e) => {
+			println!("error while extracting text: {}", e);
+			"".to_string()
+		}
+	};
+
+	res
 }
 
 pub async fn find_address_blocks(

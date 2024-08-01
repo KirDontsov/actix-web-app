@@ -1,4 +1,4 @@
-use crate::{api::Driver, jwt_auth, models::TwoGisFirm, AppState};
+use crate::{api::Driver, models::TwoGisFirm, AppState};
 use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
@@ -19,14 +19,14 @@ async fn firms_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let driver = <dyn Driver>::get_driver().await?;
-	let city = "spb";
-	let category = "клуб";
-	let rubric_id = "173";
+	let city = "moscow";
+	let category_name = "школы";
+	let rubric_id = "245";
 
 	// автосервисы
 	let url = format!(
 		"https://2gis.ru/{}/search/{}/rubricId/{}",
-		&city, &category, &rubric_id
+		&city, &category_name, &rubric_id
 	);
 	// рестораны
 	// let url = format!("https://2gis.ru/{}/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/rubricId/164?m=37.62017%2C55.753466%2F11", &city);
@@ -61,7 +61,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	// кол-во организаций/12
 	for j in 0..=edge {
-		let firms_elem: Vec<WebElement> = driver.find_all(By::XPath("//body/div/div/div/div/div/div[2]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div[contains(@style, 'width: 352px')]/div[2]/div/div/div")).await?;
+		let firms_elem: Vec<WebElement> = driver.find_all(By::XPath("//body/div/div/div/div/div/div[3]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div[contains(@style, 'width: 352px')]/div[2]/div/div/div")).await?;
 		println!("страница: {}", j);
 		sleep(Duration::from_secs(1)).await;
 
@@ -77,18 +77,22 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let mut name_xpath;
 
 		// номер страницы после которой все упало
-		if j >= 0 {
+		if j >= 227 {
 			for (i, firm_elem) in firms_elem.clone().into_iter().enumerate() {
 				println!("фирма: {}", &i);
 
 				let _ = firm_elem.scroll_into_view().await;
 
-				if firm_elem.inner_html().await?.contains("_h2n9mw") {
+				if firm_elem.inner_html().await?.contains("_h2n9mw")
+					|| firm_elem.inner_html().await?.contains("Нижнекамск")
+					|| firm_elem.inner_html().await?.contains("Елабуга")
+					|| firm_elem.inner_html().await?.contains("Альметьевск")
+				{
 					continue;
 				}
 
 				name_xpath = [
-				"//body/div/div/div/div/div/div[2]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div[contains(@style, 'width: 352px')]/div[2]/div/div[",
+				"//body/div/div/div/div/div/div[3]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div[contains(@style, 'width: 352px')]/div[2]/div/div[",
 				format!("{}", i + 1).as_str(),
 				"]/div/div/a/span/span[1]",
 				]
@@ -148,7 +152,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let _ = last.scroll_into_view().await?;
 		sleep(Duration::from_secs(1)).await;
 
-		let button = find_element(driver.clone(),"//body/div/div/div/div/div/div[2]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div/div[3]/div[2]/div[2]".to_string()).await?;
+		let button = find_element(driver.clone(),"//body/div/div/div/div/div/div[3]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div/div[3]/div[2]/div[2]".to_string()).await?;
 
 		// переключение пагинации
 		let _ = button.click().await;

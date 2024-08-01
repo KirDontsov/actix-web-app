@@ -127,7 +127,6 @@ async fn get_page_by_url_handler(
 
 #[get("/pages")]
 async fn get_pages_handler(
-
 	// opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,

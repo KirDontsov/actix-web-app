@@ -40,11 +40,11 @@ async fn firms_description_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("7711da84-7d98-4072-aa35-b642c7ac0762");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
-	let category_id = uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").unwrap();
-	let city = "spb";
-	let category_name = "клуб";
-	let rubric_id = "173";
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
+	let city = "moscow";
+	let category_name = "школы";
+	let rubric_id = "245";
 
 	let driver = <dyn Driver>::get_driver().await?;
 
@@ -97,7 +97,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		// не запрашиваем информацию о закрытом
 		let err_block = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div/div"))
+			.query(By::XPath("//body/div/div/div/div/div/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div/div"))
 			.first()
 			.await?
 			.inner_html()

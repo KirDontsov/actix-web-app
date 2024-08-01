@@ -72,18 +72,15 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let counter_id: String = String::from("5e4f8432-c1db-4980-9b63-127fd320cdde");
 	let uri = std::env::var("OPENAI_API_BASE").expect("url not set");
 	let oai_token = env::var("OPENAI_API_KEY").expect("token not set");
-	let model = "GigaChat	".to_string();
+	let model = "GigaChat".to_string();
 	let auth_header_val = format!("Bearer {}", oai_token);
 	let table = String::from("firms");
 
 	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").unwrap();
+	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
 	let city = "moscow";
-	let category_name = "клуб";
-	let rubric_id = "173";
-
-	// let city = "spb";
-	// let category = "рестораны";
+	let category_name = "школы";
+	let rubric_id = "245";
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
@@ -92,6 +89,9 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
+
+	let https = HttpsConnector::new();
+	let client = Client::builder().build(https);
 
 	for j in start.clone()..firms_count {
 		println!("Firm: {:?}", j + 1);
@@ -102,9 +102,6 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		let mut firms: Vec<UpdateFirmDesc> = Vec::new();
 
 		// ====
-
-		let https = HttpsConnector::new();
-		let client = Client::builder().build(https);
 
 		let firm_id = &firm.firm_id.clone();
 		let firm_name = &firm.name.clone().unwrap_or("".to_string());

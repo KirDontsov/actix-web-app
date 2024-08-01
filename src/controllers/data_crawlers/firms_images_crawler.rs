@@ -42,11 +42,11 @@ async fn firms_images_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("2a94ecc5-fb8d-4b4d-bb03-e3ee2eb708da");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
-	let category_id = uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").unwrap();
-	let city = "spb";
-	let category_name = "клуб";
-	let rubric_id = "173";
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
+	let city = "moscow";
+	let category_name = "школы";
+	let rubric_id = "245";
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
@@ -99,19 +99,15 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			driver.refresh().await?;
 		}
 
-		let main_block = match find_main_block(driver.clone()).await {
-			Ok(img_elem) => img_elem,
-			Err(e) => {
-				println!("error while searching main block: {}", e);
-				"".to_string()
-			}
-		};
+		let main_block = find_main_block(driver.clone()).await?;
 
-		if main_block.contains("Филиал удалён из справочника")
-			|| main_block.contains("Филиал временно не работает")
-			|| main_block.contains("Добавьте")
-			|| main_block.contains("Людям нравится")
-			|| main_block.contains("Скоро открытие")
+		let main_block_content = main_block.inner_html().await?;
+
+		if main_block_content.contains("Филиал удалён из справочника")
+			|| main_block_content.contains("Филиал временно не работает")
+			|| main_block_content.contains("Добавьте")
+			|| main_block_content.contains("Людям нравится")
+			|| main_block_content.contains("Скоро открытие")
 		{
 			driver.clone().quit().await?;
 			continue;
@@ -120,7 +116,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let mut blocks: Vec<WebElement> = Vec::new();
 
 		// кол-во фото
-		let img_count = match find_count_block(driver.clone()).await {
+		let img_count = match find_count_block(main_block.clone()).await {
 			Ok(img_elem) => img_elem,
 			Err(e) => {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
@@ -139,7 +135,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		// скролим в цикле
 		for _ in 0..edge {
-			blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[2]/div")).or(By::XPath("//div[contains(@class, \"_14aaw6sk\")]")).all_from_selector_required().await?;
+			blocks = driver.query(By::XPath("//body/div/div/div/div/div/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[2]/div")).or(By::XPath("//div[contains(@class, \"_14aaw6sk\")]")).all_from_selector_required().await?;
 			let last = blocks.last().unwrap();
 			last.scroll_into_view().await?;
 			sleep(Duration::from_secs(2)).await;
@@ -157,6 +153,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			// Записываем в бд этот img_id, firm_id и можно сгенерить Alt для него
 			let img_id = Uuid::new_v4();
 			let file_name = format!("{}.png", &img_id);
+
+			block.scroll_into_view().await?;
 
 			let img = match find_img(block).await {
 				Ok(img_elem) => {
@@ -241,28 +239,37 @@ pub async fn find_img(block: WebElement) -> Result<String, WebDriverError> {
 	Ok(img)
 }
 
-pub async fn find_main_block(driver: WebDriver) -> Result<String, WebDriverError> {
-	let err_block = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
+pub async fn find_main_block(driver: WebDriver) -> Result<WebElement, WebDriverError> {
+	let main_block = driver
+			.query(By::XPath("//body/div/div/div/div/div/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
 			.first()
-			.await?
-			.inner_html()
 			.await?;
 
-	Ok(err_block)
+	Ok(main_block)
 }
-pub async fn find_count_block(driver: WebDriver) -> Result<f32, WebDriverError> {
-	let img_count = driver
-			.query(By::XPath("//*[contains(text(),'Фото')]/span"))
-			.or(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]"))
-			.first()
-			.await?
-			.inner_html()
-			.await?
-			.parse::<f32>()
-			.unwrap_or(0.0);
 
-	Ok(img_count)
+pub async fn find_count_block(elem: WebElement) -> Result<f32, WebDriverError> {
+	let elem_arr = match elem
+			.query(By::XPath("//*[contains(text(),'Фото')]/span"))
+			.or(By::XPath("//body/div/div/div/div/div/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]"))
+			.all_from_selector_required()
+			.await {
+				Ok(block_elem) => block_elem,
+				Err(e) => {
+					println!("error while searching block: {}", e);
+					Vec::<WebElement>::new()
+				}
+			};
+
+	let res = match elem_arr.get(0).unwrap_or(&elem).inner_html().await {
+		Ok(block_elem) => block_elem,
+		Err(e) => {
+			println!("error while searching block: {}", e);
+			"".to_string()
+		}
+	};
+
+	Ok(res.parse::<f32>().unwrap_or(0.0))
 }
 
 pub async fn find_img_block(driver: WebDriver) -> Result<WebElement, WebDriverError> {

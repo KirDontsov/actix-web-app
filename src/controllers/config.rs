@@ -27,20 +27,20 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// parsers
 		// .service(firms_crawler_handler)
 		// .service(firms_info_crawler_handler)
-		// .service(firms_reviews_crawler_handler)
+		// .service(firms_address_crawler_handler)
 		// .service(firms_description_crawler_handler)
+		// .service(firms_reviews_crawler_handler)
 		// .service(firms_images_crawler_handler)
 		// .service(firms_prices_crawler_handler)
-		// .service(firms_address_crawler_handler)
 		// .service(firms_rating_crawler_handler)
 		// .service(mir_far_crawler_handler)
 		// processing
-		// .service(urls_processing_handler)
 		// .service(images_processing_handler)
 		// .service(reviews_processing_handler)
 		// .service(description_processing_handler)
 		// .service(sitemap_processing_handler)
 		// .service(reviews_count_processing_handler)
+		// .service(urls_processing_handler)
 		//user
 		.service(get_users_handler)
 		.service(get_user_handler)

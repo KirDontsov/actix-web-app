@@ -77,10 +77,11 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let model = "gpt-3.5-turbo".to_string();
 	let auth_header_val = format!("Bearer {}", oai_token);
 	let table = String::from("firms");
-	let city_id =
-		uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").expect("city_id not set");
-	let category_id =
-		uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").expect("category_id not set");
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
+	let city = "moscow";
+	let category_name = "школы";
+	let rubric_id = "245";
 
 	// let city = "moscow";
 	// let category = "клубы";

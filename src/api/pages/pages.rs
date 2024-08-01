@@ -42,11 +42,12 @@ impl PageBlock {
 		db: &Pool<Postgres>,
 		id: &Uuid,
 	) -> Result<Vec<Self>, CustomError> {
-		let page_block_query_result =
-			sqlx::query_as::<_, PageBlock>("SELECT * FROM pages_blocks WHERE page_id = $1 ORDER BY page_block_order")
-				.bind(id)
-				.fetch_all(db)
-				.await;
+		let page_block_query_result = sqlx::query_as::<_, PageBlock>(
+			"SELECT * FROM pages_blocks WHERE page_id = $1 ORDER BY page_block_order",
+		)
+		.bind(id)
+		.fetch_all(db)
+		.await;
 
 		let message = "Что-то пошло не так во время запроса get_page_blocks_by_page_id";
 
