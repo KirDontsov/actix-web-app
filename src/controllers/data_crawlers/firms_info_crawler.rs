@@ -39,23 +39,15 @@ async fn firms_info_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("55d7ef92-45ca-40df-8e88-4e1a32076367");
 	let table = String::from("two_gis_firms");
-	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
-	let category_id = uuid::Uuid::parse_str("cc1492f6-a484-4c5f-b570-9bd3ec793613").unwrap();
-	let city = "spb";
-	let category_name = "клуб";
-	let rubric_id = "173";
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
+	let city = "moscow";
+	let category_name = "школы";
+	let rubric_id = "245";
 
 	let driver = <dyn Driver>::get_driver().await?;
 
 	let firms_count = Count::count(&data.db, table).await.unwrap_or(0);
-
-	let category = sqlx::query_as!(
-		Category,
-		"SELECT * FROM categories WHERE abbreviation = 'clubs';",
-	)
-	.fetch_one(&data.db)
-	.await
-	.unwrap();
 
 	let type_item = sqlx::query_as!(
 		Type,
@@ -147,7 +139,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.await?;
 		// есть ли доп блок "Уже воспользовались услугами?"
 		let extra_block = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[1]"))
+			.query(By::XPath("//body/div/div/div/div/div/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div[1]"))
 			.first()
 			.await?
 			.inner_html()
@@ -157,7 +149,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		address_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]/div/div[1]", info_block_number, 1);
 		phone_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]/div[last()]/div/a", info_block_number, 3);
 		site_xpath = format!("//body/div/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div[last()]/div[last()]/div/div/div/div/div/div/div[last()]/div[2]/div[1]/div[{}]/div/div[{}]", info_block_number, 4);
-		// email_xpath = "//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div/div/div[6]/div[2]/div/a";
+		// email_xpath = "//body/div/div/div/div/div/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]/div[2]/div/div/div/div[6]/div[2]/div/a";
 
 		// с доп блоком
 		if extra_block.contains("Уже воспользовались услугами?") {
@@ -227,7 +219,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			)
 			.bind(firm.two_gis_firm_id.clone().unwrap())
 			.bind(city_id.clone())
-			.bind(category.category_id.clone())
+			.bind(category_id.clone())
 			.bind(type_item.type_id.clone())
 			.bind(firm.name.clone().unwrap())
 			.bind(firm_address.replace("\n", ", "))
@@ -251,7 +243,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 pub async fn find_main_block(driver: WebDriver) -> Result<String, WebDriverError> {
 	let block = driver
-			.query(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
+			.query(By::XPath("//body/div/div/div/div/div/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div"))
 			.first()
 			.await?
 			.inner_html()

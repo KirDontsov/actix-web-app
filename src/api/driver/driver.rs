@@ -5,6 +5,7 @@ pub trait Driver {}
 impl dyn Driver {
 	pub async fn get_driver() -> Result<WebDriver, WebDriverError> {
 		let mut caps = DesiredCapabilities::chrome();
+		// let mut caps = DesiredCapabilities::firefox();
 
 		// без загрузки изображений
 		caps.insert_browser_option(
@@ -18,7 +19,7 @@ impl dyn Driver {
 				}
 			}),
 		)?;
-		// // let _ = caps.set_headless();
+		// let _ = caps.set_headless();
 		let _ = caps.set_page_load_strategy(PageLoadStrategy::Eager)?;
 		let _ = caps.add_arg("enable-automation");
 		let _ = caps.add_arg("--no-sandbox");
@@ -29,7 +30,6 @@ impl dyn Driver {
 
 		// firefox
 		// let _ = caps.set_page_load_strategy(PageLoadStrategy::None)?;
-		// let _ = caps.add_(PageLoadStrategy::None)?;
 		let driver = WebDriver::new("http://localhost:9515", caps).await;
 		driver
 	}

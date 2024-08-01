@@ -78,7 +78,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 				let mut cropped_img: PhotonImage = crop(
 					&mut img,
-					width - 111_u32,
+					width - 121_u32,
 					height - 121_u32,
 					width,
 					height - 51_u32,
@@ -87,7 +87,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 				darken_hsl(&mut cropped_img, 0.1_f32);
 				box_blur(&mut cropped_img);
 
-				watermark(&mut img, &cropped_img, width - 110_u32, height - 60_u32);
+				watermark(&mut img, &cropped_img, width - 120_u32, height - 60_u32);
 				save_image(img, path.to_str().unwrap()).expect("File should be saved");
 			}
 			Err(e) => {

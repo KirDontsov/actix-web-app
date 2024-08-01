@@ -40,10 +40,11 @@ async fn firms_prices_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("5116c826-87a8-4881-ba9c-19c0068b3c62");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
-	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
-	let city = "spb";
-	let category = "рестораны";
+	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
+	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
+	let city = "moscow";
+	let category_name = "школы";
+	let rubric_id = "245";
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
@@ -86,7 +87,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.goto(format!(
 				"https://2gis.ru/{}/search/{}/firm/{}/tab/prices",
 				&city,
-				&category,
+				&category_name,
 				&firm.two_gis_firm_id.clone().unwrap()
 			))
 			.await?;
@@ -128,7 +129,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 				dbg!(&counter);
 				println!("error while searching _183lbryc: {}", e);
-				driver.clone().quit().await?;
 				vec![]
 			}
 		};
@@ -139,7 +139,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 				dbg!(&counter);
 				println!("error while searching _rixun1: {}", e);
-				driver.clone().quit().await?;
 				vec![]
 			}
 		};
@@ -157,7 +156,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 				dbg!(&counter);
 				println!("error while searching count block: {}", e);
-				driver.clone().quit().await?;
 				0.0
 			}
 		};
@@ -179,7 +177,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 					dbg!(&counter);
 					println!("error while searching category: {}", e);
-					driver.clone().quit().await?;
 					vec![]
 				}
 			};
@@ -200,7 +197,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 				dbg!(&counter);
 				println!("error while searching category: {}", e);
-				driver.clone().quit().await?;
 				vec![]
 			}
 		};
@@ -229,7 +225,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 					dbg!(&counter);
 					println!("error while searching category: {}", e);
-					driver.clone().quit().await?;
 					"".to_string()
 				}
 			};
@@ -305,7 +300,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 							update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 						dbg!(&counter);
 						println!("error while searching prices: {}", e);
-						driver.clone().quit().await?;
 						"".to_string()
 					}
 				};
@@ -377,7 +371,7 @@ pub async fn find_main_block(driver: WebDriver) -> Result<String, WebDriverError
 pub async fn find_count_block(driver: WebDriver) -> Result<f32, WebDriverError> {
 	let prices_count = driver
 			.query(By::XPath("//*[contains(text(),'Цены')]/span"))
-			.or(By::XPath("//body/div/div/div/div/div/div[2]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]"))
+			.or(By::XPath("//body/div/div/div/div/div/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div/div/div/div/div/div[2]"))
 			.first()
 			.await?
 			.inner_html()

@@ -46,8 +46,6 @@ async fn get_oai_reviews_by_url_handler(
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
-	let limit = opts.limit.unwrap_or(10);
-	let offset = (opts.page.unwrap_or(1) - 1) * limit;
 	let table = String::from("oai_reviews");
 
 	let firm_url = &path.into_inner();
@@ -62,10 +60,8 @@ async fn get_oai_reviews_by_url_handler(
 
 	let query_result = sqlx::query_as!(
 		OAIReview,
-		"SELECT * FROM oai_reviews WHERE firm_id = $1 ORDER by oai_review_id LIMIT $2 OFFSET $3",
+		"SELECT * FROM oai_reviews WHERE firm_id = $1 ORDER by oai_review_id",
 		firm_id,
-		limit as i32,
-		offset as i32
 	)
 	.fetch_all(&data.db)
 	.await;
