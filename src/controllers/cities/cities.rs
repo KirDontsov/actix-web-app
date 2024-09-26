@@ -23,7 +23,7 @@ async fn get_cities_handler(
 
 	let query_result = sqlx::query_as!(
 		City,
-		"SELECT * FROM cities ORDER by city_id LIMIT $1 OFFSET $2",
+		"SELECT * FROM cities ORDER by order_number LIMIT $1 OFFSET $2",
 		limit as i32,
 		offset as i32
 	)

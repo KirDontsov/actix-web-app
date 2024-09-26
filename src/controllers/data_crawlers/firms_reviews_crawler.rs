@@ -7,6 +7,7 @@ use crate::{
 use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
+use std::env;
 
 #[allow(unreachable_code)]
 #[get("/crawler/reviews")]
@@ -39,11 +40,11 @@ async fn firms_reviews_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("4bb99137-6c90-42e6-8385-83c522cde804");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
-	let city = "moscow";
-	let category_name = "школы";
-	let rubric_id = "245";
+	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
+	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
+	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
+	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
@@ -82,7 +83,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		driver
 			.goto(format!(
 				"https://2gis.ru/{}/search/{}/firm/{}/tab/reviews",
-				&city,
+				&city_name,
 				&category_name,
 				&firm.two_gis_firm_id.clone().unwrap()
 			))
@@ -173,7 +174,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 			if block_content.contains("Неподтвержденные отзывы")
 				|| block_content.contains("Все отзывы")
-				|| block_content.contains("Загрузить еще")
+				|| block_content.contains("Загрузить ещё")
 				|| block_content.contains("официальный ответ")
 				|| block_content.contains("С ответами")
 				|| block_content.contains("Люди говорят")

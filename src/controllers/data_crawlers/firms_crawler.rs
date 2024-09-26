@@ -1,5 +1,6 @@
 use crate::{api::Driver, models::TwoGisFirm, AppState};
 use actix_web::{get, web, HttpResponse, Responder};
+use std::env;
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 
@@ -19,17 +20,28 @@ async fn firms_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let driver = <dyn Driver>::get_driver().await?;
-	let city = "moscow";
-	let category_name = "школы";
-	let rubric_id = "245";
+	let city_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CITY_ID")
+			.expect("CRAWLER_CITY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let category_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CATEGORY_ID")
+			.expect("CRAWLER_CATEGORY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
+	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
+	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
+	dbg!(&city_name);
 
-	// автосервисы
 	let url = format!(
 		"https://2gis.ru/{}/search/{}/rubricId/{}",
-		&city, &category_name, &rubric_id
+		&city_name, &category_name, &rubric_id
 	);
-	// рестораны
-	// let url = format!("https://2gis.ru/{}/search/%D0%A0%D0%B5%D1%81%D1%82%D0%BE%D1%80%D0%B0%D0%BD%D1%8B/rubricId/164?m=37.62017%2C55.753466%2F11", &city);
+
 	driver.goto(url).await?;
 	sleep(Duration::from_secs(1)).await;
 
@@ -47,7 +59,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	let number_of_elements_xpath = String::from("//span[contains(@class, \"_1xhlznaa\")]");
 
-	let number_of_elements = match find_block(driver.clone(), number_of_elements_xpath).await {
+	let number_of_elements = match find_main_block(driver.clone(), number_of_elements_xpath).await {
 		Ok(elem) => elem,
 		Err(e) => {
 			println!("error while searching name block: {}", e);
@@ -61,12 +73,16 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	// кол-во организаций/12
 	for j in 0..=edge {
-		let firms_elem: Vec<WebElement> = driver.find_all(By::XPath("//body/div/div/div/div/div/div[3]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div[contains(@style, 'width: 352px')]/div[2]/div/div/div")).await?;
+		let firm_elems: Vec<WebElement> = driver.find_all(By::XPath("//body/div/div/div/div/div/div[3]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div[contains(@style, 'width: 352px')]/div[2]/div/div/div")).await?;
 		println!("страница: {}", j);
 		sleep(Duration::from_secs(1)).await;
 
-		let first = firms_elem.first().unwrap();
-		let last = firms_elem.last().unwrap();
+		let first = firm_elems
+			.first()
+			.unwrap_or(firm_elems.get(1).unwrap_or(firm_elems.last().unwrap()));
+		let last = firm_elems
+			.last()
+			.unwrap_or(firm_elems.get(1).unwrap_or(firm_elems.first().unwrap()));
 
 		let _ = last.scroll_into_view().await?;
 		sleep(Duration::from_secs(2)).await;
@@ -75,74 +91,114 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		sleep(Duration::from_secs(1)).await;
 
 		let mut name_xpath;
+		let mut firm_id_xpath;
 
 		// номер страницы после которой все упало
-		if j >= 227 {
-			for (i, firm_elem) in firms_elem.clone().into_iter().enumerate() {
+		if j >= 0 {
+			for (i, firm_elem) in firm_elems.clone().into_iter().enumerate() {
 				println!("фирма: {}", &i);
 
 				let _ = firm_elem.scroll_into_view().await;
 
-				if firm_elem.inner_html().await?.contains("_h2n9mw")
-					|| firm_elem.inner_html().await?.contains("Нижнекамск")
-					|| firm_elem.inner_html().await?.contains("Елабуга")
-					|| firm_elem.inner_html().await?.contains("Альметьевск")
+				let firms_content = firm_elem.inner_html().await?;
+
+				if firms_content.contains("_h2n9mw")
+					|| firms_content.contains("_2p5l74")
+					|| firms_content.contains("↗")
+					|| firms_content.contains("Это интересно")
 				{
 					continue;
 				}
 
 				name_xpath = [
-				"//body/div/div/div/div/div/div[3]/div/div/div[2]/div/div/div/div[2]/div[2]/div/div/div/div[contains(@style, 'width: 352px')]/div[2]/div/div[",
+				"//*[@id='root']/div/div/div[1]/div[1]/div[3]/div/div/div[2]/div/div/div/div[2]/div[2]/div[1]/div/div/div/div[2]/div/div[",
 				format!("{}", i + 1).as_str(),
 				"]/div/div/a/span/span[1]",
 				]
 				.concat()
 				.to_string();
 
-				let _ = firm_elem.click().await?;
-				sleep(Duration::from_secs(5)).await;
+				//*[@id='root']/div/div/div[1]/div[1]/div[3]/div/div/div[2]/div/div/div/div[2]/div[2]/div[1]/div/div/div/div[2]/div/div[12]/div/div[1]/a
+				firm_id_xpath = [
+				"//*[@id='root']/div/div/div[1]/div[1]/div[3]/div/div/div[2]/div/div/div/div[2]/div[2]/div[1]/div/div/div/div[2]/div/div[",
+				format!("{}", i + 1).as_str(),
+				"]/div/div/a",
+				]
+				.concat()
+				.to_string();
 
-				let firm_name = match find_block(driver.clone(), name_xpath.clone()).await {
+				let firm_name_block = find_block(firm_elem.clone(), name_xpath.clone()).await?;
+
+				let firm_id_block = match find_id_block(firm_elem.clone(), firm_id_xpath).await {
 					Ok(elem) => elem,
 					Err(e) => {
-						println!("error while searching name block: {}", e);
+						println!("error while searching id block: {}", e);
 						"".to_string()
 					}
 				};
 
-				let url_with_coords = driver.current_url().await?;
-				println!("{}", &url_with_coords);
+				let split_target = String::from("/firm/");
 
-				let mut url_parts = url_with_coords
-					.path_segments()
-					.unwrap()
-					.collect::<Vec<&str>>();
-				let firm_id;
-				let coords;
+				// TODO: попробовать заменить на regexp
+				let url_part_one = *firm_id_block
+					.split(&split_target)
+					.collect::<Vec<&str>>()
+					.get_mut(1)
+					.unwrap_or(&mut "-?");
 
-				if url_parts.contains(&"branches") {
-					driver.back().await?;
-				}
+				let firm_id = *url_part_one
+					.split("?")
+					.collect::<Vec<&str>>()
+					.get(0)
+					.unwrap_or(&mut "");
 
-				if j == 0 {
-					firm_id = *url_parts.get_mut(6).unwrap_or(&mut "-");
-					coords = *url_parts.get_mut(7).unwrap_or(&mut "-");
-				} else {
-					firm_id = *url_parts.get_mut(8).unwrap_or(&mut "-");
-					coords = *url_parts.get_mut(9).unwrap_or(&mut "-");
-				}
+				// let _ = firm_name_block.click().await?;
+				// sleep(Duration::from_secs(5)).await;
+
+				// let url_with_coords = driver.current_url().await?;
+				// println!("{}", &url_with_coords);
+
+				// let mut url_parts = url_with_coords
+				// 	.path_segments()
+				// 	.unwrap()
+				// 	.collect::<Vec<&str>>();
+				// let firm_id;
+				// let coords;
+
+				// if url_parts.contains(&"branches") {
+				// 	driver.back().await?;
+				// }
+
+				let firm_name = firm_name_block.text().await?;
+
+				// if j == 0 {
+				// 	firm_id = *url_parts.get_mut(6).unwrap_or(&mut "-");
+				// 	coords = *url_parts.get_mut(7).unwrap_or(&mut "-");
+				// } else {
+				// 	firm_id = *url_parts.get_mut(8).unwrap_or(&mut "-");
+				// 	coords = *url_parts.get_mut(9).unwrap_or(&mut "-");
+				// }
+
+				// if j == 0 {
+				// 	firm_id = *url_parts.get_mut(4).unwrap_or(&mut "-");
+				// 	coords = *url_parts.get_mut(5).unwrap_or(&mut "-");
+				// } else {
+				// 	firm_id = *url_parts.get_mut(6).unwrap_or(&mut "-");
+				// 	coords = *url_parts.get_mut(7).unwrap_or(&mut "-");
+				// }
 
 				dbg!(&firm_id);
-				dbg!(&coords);
+				dbg!(&firm_name);
+				// dbg!(&coords);
 
 				// запись в бд
 				let _ = sqlx::query_as!(
 					TwoGisFirm,
-					"INSERT INTO two_gis_firms (name, two_gis_firm_id, category_id, coords) VALUES ($1, $2, $3, $4) RETURNING *",
+					"INSERT INTO two_gis_firms (name, two_gis_firm_id, category_id) VALUES ($1, $2, $3) RETURNING *",
 					&firm_name.to_string(),
 					&firm_id.to_string(),
 					"restaurants".to_string(),
-					&coords.replace("%2C", ", ").to_string(),
+					// &coords.replace("%2C", ", ").to_string(),
 				)
 				.fetch_one(&data.db)
 				.await;
@@ -170,7 +226,7 @@ pub async fn find_element(driver: WebDriver, xpath: String) -> Result<WebElement
 	Ok(block)
 }
 
-pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
+pub async fn find_main_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
 	let err_block = driver
 		.query(By::XPath(&xpath.to_owned()))
 		.or(By::XPath("//span[contains(@class, \"_1al0wlf\")]"))
@@ -182,16 +238,49 @@ pub async fn find_block(driver: WebDriver, xpath: String) -> Result<String, WebD
 	Ok(err_block)
 }
 
-pub async fn find_id_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
-	let err_block = driver
-		.query(By::XPath(&xpath.to_owned()))
-		.first()
-		.await?
-		.attr("href")
-		.await?
-		.unwrap_or("".to_string());
+pub async fn find_block(elem: WebElement, xpath: String) -> Result<WebElement, WebDriverError> {
+	let block_arr = match elem
+		.query(By::XPath(&xpath))
+		.or(By::XPath("//span[contains(@class, \"_1al0wlf\")]"))
+		.nowait()
+		.all_from_selector_required()
+		.await
+	{
+		Ok(block_elems) => block_elems,
+		Err(e) => {
+			println!("error while searching block: {}", e);
+			Vec::<WebElement>::new()
+		}
+	};
 
-	Ok(err_block)
+	let res = block_arr.get(0).unwrap_or(&elem).to_owned();
+
+	Ok(res)
+}
+
+pub async fn find_id_block(elem: WebElement, xpath: String) -> Result<String, WebDriverError> {
+	let block_arr = match elem
+		.query(By::XPath(&xpath))
+		.nowait()
+		.all_from_selector_required()
+		.await
+	{
+		Ok(block_elem) => block_elem,
+		Err(e) => {
+			println!("error while searching block: {}", e);
+			Vec::<WebElement>::new()
+		}
+	};
+
+	let res = match block_arr.get(0).unwrap_or(&elem).attr("href").await {
+		Ok(block_elem) => block_elem,
+		Err(e) => {
+			println!("error while extracting text: {}", e);
+			Some("".to_string())
+		}
+	};
+
+	Ok(res.unwrap_or("".to_string()))
 }
 
 pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverError> {

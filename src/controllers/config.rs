@@ -16,6 +16,7 @@ use crate::controllers::reviews::*;
 use crate::controllers::routes::*;
 use crate::controllers::types::*;
 use crate::controllers::user::*;
+use crate::controllers::data_operations::*;
 
 pub fn config(conf: &mut web::ServiceConfig) {
 	let scope = web::scope("/api")
@@ -31,6 +32,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// .service(firms_description_crawler_handler)
 		// .service(firms_reviews_crawler_handler)
 		// .service(firms_images_crawler_handler)
+		// .service(exact_firm_images_crawler_handler)
 		// .service(firms_prices_crawler_handler)
 		// .service(firms_rating_crawler_handler)
 		// .service(mir_far_crawler_handler)

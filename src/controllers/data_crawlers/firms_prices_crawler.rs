@@ -8,6 +8,7 @@ use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 use uuid::Uuid;
+use std::env;
 
 #[allow(unreachable_code)]
 #[get("/crawler/prices")]
@@ -40,11 +41,11 @@ async fn firms_prices_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("5116c826-87a8-4881-ba9c-19c0068b3c62");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
-	let city = "moscow";
-	let category_name = "школы";
-	let rubric_id = "245";
+	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
+	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
+	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
+	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
@@ -86,7 +87,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		driver
 			.goto(format!(
 				"https://2gis.ru/{}/search/{}/firm/{}/tab/prices",
-				&city,
+				&city_name,
 				&category_name,
 				&firm.two_gis_firm_id.clone().unwrap()
 			))
@@ -105,20 +106,24 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			driver.refresh().await?;
 		}
 
-		let main_block = match find_main_block(driver.clone()).await {
-			Ok(img_elem) => img_elem,
+		let catalogue_container = match find_element_by_classname(driver.clone(), "_1b96w9b").await {
+			Ok(elem) => elem,
 			Err(e) => {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+
 				dbg!(&counter);
-				println!("error while searching main block: {}", e);
-				"".to_string()
+				println!("error while searching _183lbryc: {}", e);
+				String::new()
 			}
 		};
 
-		if main_block.contains("Филиал удалён из справочника")
-			|| main_block.contains("Филиал временно не работает")
-			|| main_block.contains("Посмотреть на сайте")
-			|| main_block.contains("Добавьте сюда фотографий!")
+		if catalogue_container.contains("Филиал удалён из справочника")
+			|| catalogue_container.contains("Филиал временно не работает")
+			|| catalogue_container.contains("Посмотреть на сайте")
+			|| catalogue_container.contains("Добавьте сюда фотографий!")
+			|| catalogue_container.contains("_14quei")
+			|| catalogue_container.contains("_1e8kkm3")
+			|| catalogue_container.contains("_1nkoou7")
 		{
 			continue;
 		}
@@ -171,7 +176,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		// скролим в цикле
 		for _ in 0..edge {
-			let blocks = match find_elements_by_class(driver.clone(), "_8mqv20").await {
+			let blocks = match find_elements_by_class(driver.clone(), "_1q7u1a2", "_19i46pu").await {
 				Ok(elem) => elem,
 				Err(e) => {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
@@ -181,8 +186,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				}
 			};
 
-			let first = blocks.first().unwrap();
-			let last = blocks.last().unwrap();
+			let first = blocks.first().unwrap_or(blocks.get(1).unwrap_or(blocks.last().unwrap()));
+			let last = blocks.last().unwrap_or(blocks.get(1).unwrap_or(blocks.first().unwrap()));
 
 			last.scroll_into_view().await?;
 			sleep(Duration::from_secs(2)).await;
@@ -191,7 +196,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			sleep(Duration::from_secs(1)).await;
 		}
 
-		categories_blocks = match find_elements_by_class(driver.clone(), "_19i46pu").await {
+		categories_blocks = match find_elements_by_class(driver.clone(), "_19i46pu", "_19i46pu").await {
 			Ok(elem) => elem,
 			Err(e) => {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
@@ -289,8 +294,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 				let item_name = match find_element_by_xpath(
 					driver.clone(),
-					&format!("//div[contains(@class, \"_8mqv20\")][{}]/div[1]", i),
-					&format!("//div[contains(@class, \"_8mqv20\")][{}]/div", i),
+					&format!("//div[contains(@class, \"_1q7u1a2\")][{}]/div[1]", i),
+					&format!("//div[contains(@class, \"_1q7u1a2\")][{}]/div", i),
 				)
 				.await
 				{
@@ -310,8 +315,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 				let item_value = match find_element_by_xpath(
 					driver.clone(),
-					&format!("//div[contains(@class, \"_8mqv20\")][{}]/div[2]", i),
-					&format!("//div[contains(@class, \"_8mqv20\")][{}]/div[last()]", i),
+					&format!("//div[contains(@class, \"_1q7u1a2\")][{}]/div[2]", i),
+					&format!("//div[contains(@class, \"_1q7u1a2\")][{}]/div[last()]", i),
 				)
 				.await
 				{
@@ -357,17 +362,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	Ok(())
 }
 
-pub async fn find_main_block(driver: WebDriver) -> Result<String, WebDriverError> {
-	let err_block = driver
-		.query(By::ClassName("_18lzknl"))
-		.first()
-		.await?
-		.inner_html()
-		.await?;
-
-	Ok(err_block)
-}
-
 pub async fn find_count_block(driver: WebDriver) -> Result<f32, WebDriverError> {
 	let prices_count = driver
 			.query(By::XPath("//*[contains(text(),'Цены')]/span"))
@@ -398,12 +392,29 @@ pub async fn find_element_by_xpath(
 	Ok(elem)
 }
 
+pub async fn find_element_by_classname(
+	driver: WebDriver,
+	classname: &str,
+) -> Result<String, WebDriverError> {
+	let elem = driver
+		.query(By::ClassName(classname))
+		.first()
+		.await?
+		.inner_html()
+		.await?;
+
+	Ok(elem)
+}
+
 pub async fn find_elements_by_class(
 	driver: WebDriver,
 	classname: &str,
+	classname2: &str,
 ) -> Result<Vec<WebElement>, WebDriverError> {
 	let elem = driver
 		.query(By::ClassName(classname))
+		.or(By::ClassName(classname2))
+		.nowait()
 		.all_from_selector_required()
 		.await?;
 

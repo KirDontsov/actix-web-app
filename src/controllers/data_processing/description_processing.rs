@@ -76,11 +76,11 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let auth_header_val = format!("Bearer {}", oai_token);
 	let table = String::from("firms");
 
-	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
-	let city = "moscow";
-	let category_name = "школы";
-	let rubric_id = "245";
+	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
+	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
+	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
+	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
