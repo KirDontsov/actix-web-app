@@ -9,6 +9,7 @@ pub struct Category {
 	pub single_name: Option<String>,
 	pub rod_name: Option<String>,
 	pub pred_name: Option<String>,
+	pub vin_name: Option<String>,
 	pub order_number: Option<String>,
 	pub is_active: Option<String>,
 }
@@ -29,6 +30,7 @@ pub struct FilteredCategory {
 	pub single_name: Option<String>,
 	pub rod_name: Option<String>,
 	pub pred_name: Option<String>,
+	pub vin_name: Option<String>,
 	pub order_number: Option<String>,
 	pub is_active: Option<String>,
 }
