@@ -23,7 +23,7 @@ async fn get_categories_handler(
 
 	let query_result = sqlx::query_as!(
 		Category,
-		"SELECT * FROM categories ORDER by category_id LIMIT $1 OFFSET $2",
+		"SELECT * FROM categories ORDER by order_number LIMIT $1 OFFSET $2",
 		limit as i32,
 		offset as i32
 	)

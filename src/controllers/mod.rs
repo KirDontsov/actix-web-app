@@ -15,5 +15,6 @@ pub mod reviews;
 pub mod routes;
 pub mod types;
 pub mod user;
+pub mod data_operations;
 
 pub use self::config::config;

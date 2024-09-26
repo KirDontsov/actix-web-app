@@ -24,23 +24,7 @@ async fn images_processing_handler(
 			Err(e)
 		}
 	};
-	// loop {
-	// 	let mut needs_to_restart = true;
-	// 	if needs_to_restart {
-	// 		let _: Result<(), Box<dyn std::error::Error>> = match processing(data.clone()).await {
-	// 			Ok(x) => {
-	// 				needs_to_restart = false;
-	// 				Ok(x)
-	// 			}
-	// 			Err(e) => {
-	// 				println!("{:?}", e);
-	// 				let _ = sleep(Duration::from_secs(20)).await;
-	// 				needs_to_restart = true;
-	// 				Err(e)
-	// 			}
-	// 		};
-	// 	}
-	// }
+
 	let json_response = serde_json::json!({
 		"status":  "success",
 	});
@@ -48,25 +32,9 @@ async fn images_processing_handler(
 }
 
 async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
-	// let counter_id: String = String::from("");
-	// let table = String::from("firms");
-	// let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
-
-	// let firms_count = Count::count_firms_by_category(&data.db, table, category_id)
-	// 	.await
-	// 	.unwrap_or(0);
-
-	// имея id фирмы как название директории
-	// заходим в нее
 	// в цикле берем каждое фото
 	// обрабатываем
 	// и сохраняем обратно с тем же именем
-
-	// let paths = fs::read_dir("output/images").unwrap();
-
-	// for path in paths {
-	// 	println!("Name: {}", path.unwrap().path().display());
-	// }
 
 	for entry in glob("output/images/**/*.png")? {
 		match entry {

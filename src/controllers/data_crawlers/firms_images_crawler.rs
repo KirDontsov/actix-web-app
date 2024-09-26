@@ -10,6 +10,7 @@ use std::{fs::create_dir, path::Path};
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 use uuid::Uuid;
+use std::env;
 
 #[allow(unreachable_code)]
 #[get("/crawler/images")]
@@ -42,11 +43,11 @@ async fn firms_images_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("2a94ecc5-fb8d-4b4d-bb03-e3ee2eb708da");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
-	let city = "moscow";
-	let category_name = "школы";
-	let rubric_id = "245";
+	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
+	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
+	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
+	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
@@ -80,7 +81,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		driver
 			.goto(format!(
 				"https://2gis.ru/{}/search/{}/firm/{}/tab/photos",
-				&city,
+				&city_name,
 				&category_name,
 				&firm.two_gis_firm_id.clone().unwrap()
 			))

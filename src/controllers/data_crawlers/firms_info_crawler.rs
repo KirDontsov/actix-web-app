@@ -7,6 +7,7 @@ use crate::{
 use actix_web::{get, web, HttpResponse, Responder};
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
+use std::env;
 
 #[allow(unreachable_code)]
 #[get("/crawler/infos")]
@@ -39,11 +40,11 @@ async fn firms_info_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("55d7ef92-45ca-40df-8e88-4e1a32076367");
 	let table = String::from("two_gis_firms");
-	let city_id = uuid::Uuid::parse_str("566e11b5-79f5-4606-8c18-054778f3daf6").unwrap();
-	let category_id = uuid::Uuid::parse_str("6fc6a115-aaf4-4590-87bf-d0cd2ce482be").unwrap();
-	let city = "moscow";
-	let category_name = "школы";
-	let rubric_id = "245";
+	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
+	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
+	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
+	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
 	let driver = <dyn Driver>::get_driver().await?;
 
@@ -74,7 +75,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		driver
 			.goto(format!(
 				"https://2gis.ru/{}/search/{}/rubricId/{}/firm/{}",
-				&city,
+				&city_name,
 				&category_name,
 				&rubric_id,
 				&firm.two_gis_firm_id.clone().unwrap()
@@ -116,6 +117,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		let mut address_xpath;
 		let mut phone_xpath;
 		let mut site_xpath;
+		let coords_xpath = String::from("//*[@id='root']/div/div/div[1]/div[1]/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div[1]/div/div/div/div/div[1]/div[1]/div[3]/a");
+
 		// let mut email_xpath;
 
 		// находим блоки среди которых есть блок с блоками с инфой
@@ -192,13 +195,35 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			}
 		};
 
+		let firm_coords_url = match find_tag_block(driver.clone(), coords_xpath).await {
+			Ok(elem) => elem,
+			Err(e) => {
+				println!("error while searching firm_address block: {}", e);
+				"".to_string()
+			}
+		};
+
+		let split_target = format!("/{}/directions/points/%7C", &city_name);
+
+		let url_part_one = *firm_coords_url
+			.split(&split_target)
+			.collect::<Vec<&str>>()
+			.get_mut(1)
+			.unwrap_or(&mut "-?");
+
+		let firm_coords_res = *url_part_one
+			.split("%3B")
+			.collect::<Vec<&str>>()
+			.get(0)
+			.unwrap_or(&mut "");
+
+		let firm_coords = firm_coords_res.replace("%2C", ", ").to_string();
+
 		let existed_firm =
 			sqlx::query_as::<_, Firm>("SELECT * FROM firms WHERE two_gis_firm_id = $1")
 				.bind(firm.two_gis_firm_id.clone().unwrap())
 				.fetch_one(&data.db)
 				.await;
-
-		dbg!(&existed_firm);
 
 		// запись в бд
 		if existed_firm.is_ok() {
@@ -207,7 +232,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			let _ = sqlx::query_as::<_, Firm>(
 				r#"UPDATE firms SET coords = $1 WHERE two_gis_firm_id = $2 RETURNING *"#,
 			)
-			.bind(firm.coords.clone().unwrap())
+			.bind(&firm_coords)
 			.bind(firm.two_gis_firm_id.clone().unwrap())
 			.fetch_one(&data.db)
 			.await;
@@ -225,7 +250,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			.bind(firm_address.replace("\n", ", "))
 			.bind(firm_phone.clone())
 			.bind(firm_site.clone())
-			.bind(firm.coords.clone().unwrap())
+			.bind(&firm_coords)
 			.fetch_one(&data.db)
 			.await;
 		}
