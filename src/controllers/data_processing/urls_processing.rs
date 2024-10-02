@@ -4,6 +4,7 @@ use crate::{
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
+use urlencoding::encode;
 
 #[allow(unreachable_code)]
 #[get("/processing/urls")]
@@ -74,14 +75,15 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		let _ = sqlx::query_as::<_, Firm>(
 			r#"UPDATE firms SET url = $1 WHERE firm_id = $2 RETURNING *"#,
 		)
-		.bind(
-			firm_url
-				.replace(" ", "-")
-				.replace(",", "-")
-				.replace(".", "-")
-				.replace("`", "")
-				.replace("--", "-")
-				.replace("&amp;", "&"),
+		.bind(encode(firm_url
+			.replace(" ", "-")
+			.replace(",", "-")
+			.replace(".", "-")
+			.replace("`", "")
+			.replace("--", "-")
+			.replace("/", "-")
+			.replace("&amp;", "&")
+			.as_str()),
 		)
 		.bind(firm.firm_id)
 		.fetch_one(&data.db)

@@ -32,6 +32,7 @@ photon-rs = "0.3.2"
 glob = "0.3.1"
 translit = "0.5.0"
 sitemap = "0.4.1"
+urlencoding = "2.1.3"
 
 [dev-dependencies]
 time = "0.3.36"
