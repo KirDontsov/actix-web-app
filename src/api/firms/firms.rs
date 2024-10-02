@@ -1,5 +1,6 @@
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
+use urlencoding::encode;
 
 use crate::{
 	api::CustomError,
@@ -61,7 +62,7 @@ impl Firm {
 	/// GET фирма по url
 	pub async fn get_firm_by_url(db: &Pool<Postgres>, url: &String) -> Result<Self, CustomError> {
 		let firm_query_result = sqlx::query_as::<_, Firm>("SELECT * FROM firms WHERE url = $1")
-			.bind(url)
+			.bind(encode(url).to_string())
 			.fetch_one(db)
 			.await;
 

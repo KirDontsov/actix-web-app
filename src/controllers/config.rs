@@ -4,6 +4,7 @@ use crate::controllers::auth::*;
 use crate::controllers::categories::*;
 use crate::controllers::cities::*;
 use crate::controllers::data_crawlers::*;
+use crate::controllers::data_operations::*;
 use crate::controllers::data_processing::*;
 use crate::controllers::firms::*;
 use crate::controllers::images::*;
@@ -16,7 +17,6 @@ use crate::controllers::reviews::*;
 use crate::controllers::routes::*;
 use crate::controllers::types::*;
 use crate::controllers::user::*;
-use crate::controllers::data_operations::*;
 
 pub fn config(conf: &mut web::ServiceConfig) {
 	let scope = web::scope("/api")
