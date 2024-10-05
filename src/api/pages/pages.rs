@@ -1,5 +1,6 @@
 use sqlx::{Pool, Postgres};
 use uuid::Uuid;
+use urlencoding::encode;
 
 use crate::{
 	api::CustomError,
@@ -10,7 +11,7 @@ impl Page {
 	/// GET страница по url
 	pub async fn get_page_by_url(db: &Pool<Postgres>, url: &String) -> Result<Self, CustomError> {
 		let page_query_result = sqlx::query_as::<_, Page>("SELECT * FROM pages WHERE url = $1")
-			.bind(url)
+			.bind(encode(url).to_string())
 			.fetch_one(db)
 			.await;
 
