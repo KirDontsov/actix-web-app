@@ -4,6 +4,7 @@ use crate::{
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
+use std::env;
 use urlencoding::encode;
 
 #[allow(unreachable_code)]
@@ -29,21 +30,38 @@ async fn urls_processing_handler(
 
 async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
 	let table = String::from("firms");
+	let city_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CITY_ID")
+			.expect("CRAWLER_CITY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let category_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CATEGORY_ID")
+			.expect("CRAWLER_CATEGORY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
 
 	let firms_count =
-		Count::count_firms_with_empty_field(&data.db, table.clone(), "url".to_string())
+		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
 			.await
 			.unwrap_or(0);
 
 	for j in 0..=firms_count {
 		println!("№ {}", &j);
-		let firm = Firm::get_firm_with_empty_field(&data.db, table.clone(), "url".to_string(), j)
-			.await
-			.unwrap();
+		// let firm = Firm::get_firm_with_empty_field(&data.db, table.clone(), "url".to_string(), j)
+		// 	.await
+		// 	.unwrap();
 
-		if firm.url.clone().is_some() {
-			continue;
-		}
+		let firm =
+			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+				.await
+				.unwrap();
+
+		// if firm.url.clone().is_some() {
+		// 	continue;
+		// }
 
 		let translit_name = Translit::convert(firm.name.clone());
 		let firm_address = firm.address.clone().unwrap_or("".to_string());
@@ -75,16 +93,17 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		let _ = sqlx::query_as::<_, Firm>(
 			r#"UPDATE firms SET url = $1 WHERE firm_id = $2 RETURNING *"#,
 		)
-		.bind(encode(firm_url
-			.replace(" ", "-")
-			.replace(",", "-")
-			.replace(".", "-")
-			.replace("`", "")
-			.replace("--", "-")
-			.replace("/", "-")
-			.replace("&amp;", "&")
-			.as_str()),
-		)
+		.bind(encode(
+			firm_url
+				.replace(" ", "-")
+				.replace(",", "-")
+				.replace(".", "-")
+				.replace("`", "")
+				.replace("--", "-")
+				.replace("/", "-")
+				.replace("&amp;", "&")
+				.as_str(),
+		))
 		.bind(firm.firm_id)
 		.fetch_one(&data.db)
 		.await;

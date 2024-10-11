@@ -75,6 +75,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_oai_description_by_url_handler)
 		// images
 		.service(get_images_handler)
+		.service(get_image_by_url_handler)
 		.service(get_images_by_url_handler)
 		// prices
 		.service(get_prices_handler)

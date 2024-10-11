@@ -1,6 +1,7 @@
 use sitemap::structs::UrlEntry;
 use sitemap::writer::SiteMapWriter;
 use std::io::stdout;
+use std::env;
 
 use crate::{
 	models::{Category, City, Count, Firm},
@@ -32,10 +33,19 @@ async fn sitemap_processing_handler(
 
 async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str("eb8a1f13-6915-4ac9-b7d5-54096a315d08").unwrap();
-	let category_id = uuid::Uuid::parse_str("3ebc7206-6fed-4ea7-a000-27a74e867c9a").unwrap();
-	let city = "spb";
-	let category = "рестораны";
+	let city_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CITY_ID")
+			.expect("CRAWLER_CITY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let category_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CATEGORY_ID")
+			.expect("CRAWLER_CATEGORY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let domain = "https://xn--90ab9accji9e.xn--p1ai";
 
 	let city = sqlx::query_as!(
 		City,
@@ -86,7 +96,8 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		}
 
 		let url = format!(
-			"https://топвыбор.рф/{}/{}/{}",
+			"{}/{}/{}/{}",
+			&domain.clone(),
 			&city.abbreviation.clone().unwrap(),
 			&category.abbreviation.clone().unwrap(),
 			&firm.url.clone().unwrap()
