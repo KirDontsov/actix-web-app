@@ -6,9 +6,9 @@ use crate::{
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
+use std::env;
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
-use std::env;
 
 #[allow(unreachable_code)]
 #[get("/crawler/description")]
@@ -41,8 +41,18 @@ async fn firms_description_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("7711da84-7d98-4072-aa35-b642c7ac0762");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
-	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CITY_ID")
+			.expect("CRAWLER_CITY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let category_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CATEGORY_ID")
+			.expect("CRAWLER_CATEGORY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
 	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
 	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
@@ -50,12 +60,12 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let driver = <dyn Driver>::get_driver().await?;
 
 	let firms_count =
-		// Count::count_firms_with_empty_field(&data.db, table.clone(), "description".to_string())
-		// 	.await
-		// 	.unwrap_or(0);
-	Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
-		.await
-		.unwrap_or(0);
+		Count::count_firms_with_empty_field(&data.db, table.clone(), "description".to_string())
+			.await
+			.unwrap_or(0);
+	// Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+	// 	.await
+	// 	.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
@@ -66,12 +76,12 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		println!("№ {}", &j + 1);
 
 		let firm =
-			// Firm::get_firm_with_empty_field(&data.db, table.clone(), "description".to_string(), j)
-			// 	.await
-			// 	.unwrap();
-		Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
-			.await
-			.unwrap();
+			Firm::get_firm_with_empty_field(&data.db, table.clone(), "description".to_string(), j)
+				.await
+				.unwrap();
+		// Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+		// 	.await
+		// 	.unwrap();
 
 		let mut firms: Vec<UpdateFirmDesc> = Vec::new();
 

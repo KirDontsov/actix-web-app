@@ -82,7 +82,10 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_prices_by_url_handler)
 		// pages
 		.service(get_page_by_url_handler)
-		.service(get_pages_handler);
+		.service(get_pages_handler)
+		.service(get_pages_by_firm_handler)
+		// avito feed
+		.service(avito_crawler_handler);
 
 	conf.service(scope);
 }

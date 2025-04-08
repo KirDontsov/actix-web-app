@@ -1,6 +1,6 @@
 use sqlx::{Pool, Postgres};
-use uuid::Uuid;
 use urlencoding::encode;
+use uuid::Uuid;
 
 use crate::{
 	api::CustomError,
@@ -25,7 +25,22 @@ impl Page {
 
 	/// GET страница по url
 	pub async fn get_pages(db: &Pool<Postgres>) -> Result<Vec<Self>, CustomError> {
-		let pages_query_result = sqlx::query_as::<_, Page>("SELECT * FROM pages")
+		let pages_query_result = sqlx::query_as::<_, Page>("SELECT * FROM pages WHERE firm_id IS NULL")
+			.fetch_all(db)
+			.await;
+
+		let message = "Что-то пошло не так во время запроса get_pages";
+
+		match pages_query_result {
+			Ok(x) => Ok(x),
+			Err(_) => Err(CustomError::InternalError(message.to_string())),
+		}
+	}
+
+	/// GET страница по url
+	pub async fn get_pages_by_firm(db: &Pool<Postgres>, url: &String) -> Result<Vec<Self>, CustomError> {
+		let pages_query_result = sqlx::query_as::<_, Page>("SELECT * FROM pages WHERE url = $1")
+			.bind(encode(url).to_string())
 			.fetch_all(db)
 			.await;
 

@@ -1,8 +1,6 @@
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::types::TsVector;
-use sqlx::{decode::Decode, postgres::PgValueRef, types::Type, Postgres};
-use std::error::Error;
 use uuid::Uuid;
 
 #[allow(non_snake_case)]
@@ -141,4 +139,11 @@ pub struct FilteredFirmForMap {
 	pub address: Option<String>,
 	pub url: Option<String>,
 	pub coords: Option<String>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct UpdateFirmCoords {
+	pub firm_id: Uuid,
+	pub coords: String,
 }

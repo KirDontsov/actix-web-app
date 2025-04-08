@@ -5,10 +5,10 @@ use crate::{
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
+use std::env;
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 use uuid::Uuid;
-use std::env;
 
 #[allow(unreachable_code)]
 #[get("/crawler/prices")]
@@ -41,8 +41,18 @@ async fn firms_prices_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("5116c826-87a8-4881-ba9c-19c0068b3c62");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
-	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CITY_ID")
+			.expect("CRAWLER_CITY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let category_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CATEGORY_ID")
+			.expect("CRAWLER_CATEGORY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
 	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
 	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
@@ -106,7 +116,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			driver.refresh().await?;
 		}
 
-		let catalogue_container = match find_element_by_classname(driver.clone(), "_1b96w9b").await {
+		let catalogue_container = match find_element_by_classname(driver.clone(), "_1b96w9b").await
+		{
 			Ok(elem) => elem,
 			Err(e) => {
 				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
@@ -176,7 +187,8 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 		// скролим в цикле
 		for _ in 0..edge {
-			let blocks = match find_elements_by_class(driver.clone(), "_1q7u1a2", "_19i46pu").await {
+			let blocks = match find_elements_by_class(driver.clone(), "_1q7u1a2", "_19i46pu").await
+			{
 				Ok(elem) => elem,
 				Err(e) => {
 					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
@@ -186,8 +198,12 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				}
 			};
 
-			let first = blocks.first().unwrap_or(blocks.get(1).unwrap_or(blocks.last().unwrap()));
-			let last = blocks.last().unwrap_or(blocks.get(1).unwrap_or(blocks.first().unwrap()));
+			let first = blocks
+				.first()
+				.unwrap_or(blocks.get(1).unwrap_or(blocks.last().unwrap()));
+			let last = blocks
+				.last()
+				.unwrap_or(blocks.get(1).unwrap_or(blocks.first().unwrap()));
 
 			last.scroll_into_view().await?;
 			sleep(Duration::from_secs(2)).await;
@@ -196,15 +212,16 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			sleep(Duration::from_secs(1)).await;
 		}
 
-		categories_blocks = match find_elements_by_class(driver.clone(), "_19i46pu", "_19i46pu").await {
-			Ok(elem) => elem,
-			Err(e) => {
-				let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
-				dbg!(&counter);
-				println!("error while searching category: {}", e);
-				vec![]
-			}
-		};
+		categories_blocks =
+			match find_elements_by_class(driver.clone(), "_19i46pu", "_19i46pu").await {
+				Ok(elem) => elem,
+				Err(e) => {
+					let counter = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+					dbg!(&counter);
+					println!("error while searching category: {}", e);
+					vec![]
+				}
+			};
 
 		let mut total_count = 1;
 		let mut items_by_category = 0;

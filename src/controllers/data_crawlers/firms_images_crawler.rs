@@ -6,11 +6,11 @@ use crate::{
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
+use std::env;
 use std::{fs::create_dir, path::Path};
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 use uuid::Uuid;
-use std::env;
 
 #[allow(unreachable_code)]
 #[get("/crawler/images")]
@@ -43,8 +43,18 @@ async fn firms_images_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("2a94ecc5-fb8d-4b4d-bb03-e3ee2eb708da");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
-	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CITY_ID")
+			.expect("CRAWLER_CITY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let category_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CATEGORY_ID")
+			.expect("CRAWLER_CATEGORY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
 	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
 	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
@@ -57,7 +67,15 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
 
-	for j in start.clone()..=firms_count {
+	let limit: i64 = if firms_count > start + 1000 {
+		start + 1000
+	} else {
+		firms_count
+	};
+
+	println!("limit {}", &limit);
+
+	for j in start.clone()..=limit {
 		let firm =
 			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
 				.await
@@ -132,7 +150,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			continue;
 		}
 
-		let edge: i32 = ((if img_count > 100.0 { 50.0 } else { img_count }) / 12.0).ceil() as i32;
+		let edge: i32 = ((if img_count > 20.0 { 20.0 } else { img_count }) / 12.0).ceil() as i32;
 
 		// скролим в цикле
 		for _ in 0..edge {
@@ -200,7 +218,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 				Ok(_) => println!("image saved successfully"),
 				Err(e) => println!("error while downloading image: {}", e),
 			};
-
+			driver.close_window().await?;
 			// Switch back to original tab.
 			driver.switch_to_window(handle.clone()).await?;
 

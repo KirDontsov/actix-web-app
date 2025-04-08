@@ -5,9 +5,9 @@ use crate::{
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
+use std::env;
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
-use std::env;
 
 #[allow(unreachable_code)]
 #[get("/crawler/reviews")]
@@ -40,16 +40,26 @@ async fn firms_reviews_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("4bb99137-6c90-42e6-8385-83c522cde804");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
-	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CITY_ID")
+			.expect("CRAWLER_CITY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let category_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CATEGORY_ID")
+			.expect("CRAWLER_CATEGORY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
 	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
 	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
-	let firms_count =
-		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
-			.await
-			.unwrap_or(0);
+	let firms_count = 1;
+		// Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+		// 	.await
+		// 	.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start: i64 = get_counter(&data.db, &counter_id).await;
@@ -60,7 +70,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	for j in start.clone()..=firms_count {
 		println!("№: {}", &j + 1);
 		let firm =
-			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+			Firm::get_firm_by_url(&data.db, &"luchshii-svet-tihaya-6-lit-m".to_string())
 				.await
 				.unwrap();
 		let mut reviews: Vec<SaveReview> = Vec::new();

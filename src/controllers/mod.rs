@@ -3,6 +3,7 @@ pub mod categories;
 pub mod cities;
 pub mod config;
 pub mod data_crawlers;
+pub mod data_operations;
 pub mod data_processing;
 pub mod firms;
 pub mod images;
@@ -15,6 +16,5 @@ pub mod reviews;
 pub mod routes;
 pub mod types;
 pub mod user;
-pub mod data_operations;
 
 pub use self::config::config;

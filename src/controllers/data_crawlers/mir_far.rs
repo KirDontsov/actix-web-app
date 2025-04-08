@@ -45,7 +45,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 
 	blocks = driver
 		.query(By::XPath("//div[contains(@class,'item-title')]/a"))
-		.all()
+		.all_from_selector_required()
 		.await?;
 
 	for (i, block) in blocks.clone().into_iter().enumerate() {

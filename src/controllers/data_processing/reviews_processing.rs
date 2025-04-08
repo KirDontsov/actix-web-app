@@ -74,11 +74,21 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 	let client = Client::builder().build(https);
 	let uri = std::env::var("OPENAI_API_BASE").unwrap();
 	let oai_token = env::var("OPENAI_API_KEY").unwrap();
-	let model = "gpt-3.5-turbo".to_string();
+	let model = "gpt-4o-mini".to_string();
 	let auth_header_val = format!("Bearer {}", oai_token);
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
-	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CITY_ID")
+			.expect("CRAWLER_CITY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let category_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CATEGORY_ID")
+			.expect("CRAWLER_CATEGORY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
 	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
 	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
@@ -195,7 +205,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 		let body = Body::from(serde_json::to_vec(&oai_request)?);
 		let req = Request::post(&uri)
 			.header(header::CONTENT_TYPE, "application/json")
-			.header("Authorization", &auth_header_val)
+			// .header("Authorization", &auth_header_val)
 			.body(body)
 			.unwrap();
 

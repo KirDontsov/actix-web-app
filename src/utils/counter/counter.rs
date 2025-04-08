@@ -1,7 +1,7 @@
 use crate::models::{Counter, SaveCounter};
 use sqlx::{Pool, Postgres};
-use uuid::Uuid;
 use std::env;
+use uuid::Uuid;
 
 pub async fn get_counter(db: &Pool<Postgres>, id: &String) -> i64 {
 	let counter_query_result = Counter::get_counter(db, id).await.unwrap();
@@ -34,7 +34,7 @@ pub async fn update_counter(db: &Pool<Postgres>, id: &String, value: &String) ->
 			counter_id: uuid::Uuid::parse_str(&id).unwrap(),
 			value: value.clone(),
 			city_id: city_id.to_string(),
-			category_id: category_id.to_string()
+			category_id: category_id.to_string(),
 		},
 	)
 	.await

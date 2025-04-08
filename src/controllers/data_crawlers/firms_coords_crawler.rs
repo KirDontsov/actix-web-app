@@ -1,7 +1,7 @@
 use crate::{
 	api::Driver,
 	jwt_auth,
-	models::{Count, Firm, UpdateFirmAddress},
+	models::{Count, Firm, UpdateFirmCoords},
 	utils::{get_counter, update_counter},
 	AppState,
 };
@@ -11,8 +11,8 @@ use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 
 #[allow(unreachable_code)]
-#[get("/crawler/address")]
-async fn firms_address_crawler_handler(
+#[get("/crawler/coords")]
+async fn firms_coords_crawler_handler(
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
@@ -39,7 +39,7 @@ async fn firms_address_crawler_handler(
 }
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
-	let counter_id: String = String::from("1e69083b-ef25-43d6-8a08-8e1d2673826e");
+	let counter_id: String = String::from("ab887681-f062-40f0-88e2-421de924d573");
 	let table = String::from("firms");
 	let city_id = uuid::Uuid::parse_str(
 		env::var("CRAWLER_CITY_ID")
@@ -57,33 +57,32 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
 	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
-	let empty_field = "address".to_string();
+	let empty_field = "coords".to_string();
 
 	let driver = <dyn Driver>::get_driver().await?;
 
 	let firms_count =
-		// Count::count_firms_with_empty_field(&data.db, table.clone(), empty_field.clone())
-		// 	.await
-		// 	.unwrap_or(0);
-
-		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+		Count::count_firms_with_empty_field(&data.db, table.clone(), empty_field.clone())
 			.await
 			.unwrap_or(0);
+
+	// Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+	// 	.await
+	// 	.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start = get_counter(&data.db, &counter_id).await;
 
 	for j in start.clone()..=firms_count {
-		let firm =
-			// Firm::get_firm_with_empty_field(&data.db, table.clone(), empty_field.clone(), j)
-			// .await
-			// .unwrap();
+		let firm = Firm::get_firm_with_empty_field(&data.db, table.clone(), empty_field.clone(), j)
+			.await
+			.unwrap();
 
-			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
-				.await
-				.unwrap();
+		// Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
+		// 	.await
+		// 	.unwrap();
 
-		let mut firms: Vec<UpdateFirmAddress> = Vec::new();
+		let mut firms: Vec<UpdateFirmCoords> = Vec::new();
 
 		let url = format!(
 			"https://2gis.ru/{}/search/{}/firm/{}",
@@ -108,63 +107,41 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			driver.refresh().await?;
 		}
 
-		let blocks = match find_address_blocks(
-			driver.clone(),
-			"//div[contains(@class, \"_49kxlr\")]".to_string(),
-		)
-		.await
-		{
+		let coords_block = match find_tag_block(driver.clone(), "//body/div[2]/div/div/div[1]/div[1]/div[3]/div[2]/div/div/div/div/div[2]/div[2]/div/div[1]/div/div/div/div/div[1]/div[1]/div[3]/a".to_string()).await {
 			Ok(elem) => elem,
 			Err(e) => {
-				println!("error while searching firm_site block: {}", e);
+				println!("error while searching href block: {}", e);
 				driver.clone().quit().await?;
-				[].to_vec()
+				String::new()
 			}
 		};
 
-		let mut address = "".to_string();
+		let split_target = String::from("/points/%7C");
 
-		for block in blocks {
-			let block_content = block.inner_html().await?;
-			if block_content.contains("Оформить")
-				|| block_content.contains("↗")
-				|| block_content.contains("Инфо")
-				|| block_content.contains("Отзывы")
-				|| block_content.contains("Меню")
-				|| block_content.contains("Фото")
-			{
-				continue;
-			}
+		// TODO: попробовать заменить на regexp
+		let url_part_one = *coords_block
+			.split(&split_target)
+			.collect::<Vec<&str>>()
+			.get_mut(1)
+			.unwrap_or(&mut "-?");
 
-			let street_address = find_block(block.clone(), "_2lcm958".to_string()).await;
-			let city_address = find_block(block.clone(), "_1p8iqzw".to_string()).await;
+		let coords = *url_part_one
+			.split("%3B")
+			.collect::<Vec<&str>>()
+			.get(0)
+			.unwrap_or(&mut "");
 
-			let address_array = vec![street_address, city_address];
-
-			address = address_array
-				.into_iter()
-				.collect::<Vec<String>>()
-				.join(", ");
-
-			// берем только превый блок и прерываем цикл
-			break;
-		}
-
-		if address == ", ".to_string() {
-			continue;
-		}
-
-		firms.push(UpdateFirmAddress {
+		firms.push(UpdateFirmCoords {
 			firm_id: firm.firm_id.clone(),
-			address: address.clone().replace("\n", ", "),
+			coords: coords.replace("%2C", ", "),
 		});
 
 		// запись в бд
 		for firm in firms {
 			let _ = sqlx::query_as::<_, Firm>(
-				r#"UPDATE firms SET address = $1 WHERE firm_id = $2 RETURNING *"#,
+				r#"UPDATE firms SET coords = $1 WHERE firm_id = $2 RETURNING *"#,
 			)
-			.bind(&firm.address)
+			.bind(&firm.coords)
 			.bind(&firm.firm_id)
 			.fetch_one(&data.db)
 			.await;
@@ -172,7 +149,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 			dbg!(&firm);
 		}
 		// обновляем в базе счетчик
-		let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
+		// let _ = update_counter(&data.db, &counter_id, &(j + 1).to_string()).await;
 
 		println!("№ {}", &j + 1);
 	}
@@ -223,4 +200,17 @@ pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverErro
 		.await?;
 
 	Ok(err_block)
+}
+
+pub async fn find_tag_block(driver: WebDriver, xpath: String) -> Result<String, WebDriverError> {
+	let block = driver
+		.query(By::XPath(&xpath))
+		.nowait()
+		.first()
+		.await?
+		.attr("href")
+		.await?
+		.unwrap_or("".to_string());
+
+	Ok(block)
 }
