@@ -6,9 +6,9 @@ use crate::{
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
+use std::env;
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
-use std::env;
 
 #[allow(unreachable_code)]
 #[get("/crawler/address")]
@@ -41,8 +41,18 @@ async fn firms_address_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("1e69083b-ef25-43d6-8a08-8e1d2673826e");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
-	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CITY_ID")
+			.expect("CRAWLER_CITY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let category_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CATEGORY_ID")
+			.expect("CRAWLER_CATEGORY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
 	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
 	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");

@@ -1,6 +1,6 @@
 use sqlx::{Pool, Postgres};
-use uuid::Uuid;
 use urlencoding::encode;
+use uuid::Uuid;
 
 use crate::{
 	api::CustomError,
@@ -19,7 +19,7 @@ impl Firm {
 			"
 			SELECT * FROM {}
 			WHERE city_id = '{}' AND category_id = '{}'
-			ORDER BY two_gis_firm_id
+			ORDER BY created_ts DESC
 			LIMIT 1 OFFSET '{}';
 			",
 			&table_name, &city_id, &category_id, &n,

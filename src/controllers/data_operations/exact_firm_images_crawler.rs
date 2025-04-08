@@ -6,11 +6,11 @@ use crate::{
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
+use std::env;
 use std::{fs::create_dir, path::Path};
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 use uuid::Uuid;
-use std::env;
 
 #[allow(unreachable_code)]
 #[get("/crawler/exact_images")]
@@ -35,18 +35,25 @@ async fn exact_firm_images_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	// let counter_id: String = String::from("2a94ecc5-fb8d-4b4d-bb03-e3ee2eb708da");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str(env::var("CRAWLER_CITY_ID").expect("CRAWLER_CITY_ID not set").as_str()).unwrap();
-	let category_id = uuid::Uuid::parse_str(env::var("CRAWLER_CATEGORY_ID").expect("CRAWLER_CATEGORY_ID not set").as_str()).unwrap();
+	let city_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CITY_ID")
+			.expect("CRAWLER_CITY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
+	let category_id = uuid::Uuid::parse_str(
+		env::var("CRAWLER_CATEGORY_ID")
+			.expect("CRAWLER_CATEGORY_ID not set")
+			.as_str(),
+	)
+	.unwrap();
 	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
 	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
 	let url = env::var("CRAWLER_EXACT_FIRM_URL").expect("CRAWLER_EXACT_FIRM_URL not set");
 
-	let firm =
-		Firm::get_firm_by_url(&data.db, &url)
-			.await
-			.unwrap();
+	let firm = Firm::get_firm_by_url(&data.db, &url).await.unwrap();
 
 	let existed_images = sqlx::query_as!(
 		Image,
@@ -146,9 +153,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 		block.scroll_into_view().await?;
 
 		let img = match find_img(block).await {
-			Ok(img_elem) => {
-				img_elem
-			}
+			Ok(img_elem) => img_elem,
 			Err(e) => {
 				println!("error while searching image: {}", e);
 				"".to_string()
@@ -204,8 +209,6 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	println!("id: {}", &firm.two_gis_firm_id.clone().unwrap());
 	println!("{}", "======");
 	driver.clone().quit().await?;
-
-
 
 	Ok(())
 }

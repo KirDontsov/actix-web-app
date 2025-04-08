@@ -148,3 +148,27 @@ async fn get_pages_handler(
 
 	HttpResponse::Ok().json(json_response)
 }
+
+#[get("/pages_by_firm")]
+async fn get_pages_by_firm_handler(
+	// opts: web::Query<FilterOptions>,
+	data: web::Data<AppState>,
+	// _: jwt_auth::JwtMiddleware,
+) -> impl Responder {
+	let pages_query_result = Page::get_pages(&data.db).await;
+	let page_message = "Что-то пошло не так во время чтения get_page_by_url";
+	if pages_query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": &page_message}));
+	}
+	let pages = pages_query_result.expect(&page_message);
+
+	let json_response = json!({
+		"status":  "success",
+		"data": json!({
+			"pages": pages,
+		})
+	});
+
+	HttpResponse::Ok().json(json_response)
+}

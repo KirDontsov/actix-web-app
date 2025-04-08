@@ -1,7 +1,7 @@
 use sitemap::structs::UrlEntry;
 use sitemap::writer::SiteMapWriter;
-use std::io::stdout;
 use std::env;
+use std::io::stdout;
 
 use crate::{
 	models::{Category, City, Count, Firm},
@@ -97,7 +97,7 @@ async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error:
 
 		let url = format!(
 			"{}/{}/{}/{}",
-			&domain.clone(),
+			&domain,
 			&city.abbreviation.clone().unwrap(),
 			&category.abbreviation.clone().unwrap(),
 			&firm.url.clone().unwrap()

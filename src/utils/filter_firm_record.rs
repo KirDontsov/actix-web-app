@@ -21,22 +21,6 @@ pub fn filter_firm_record(firm: &Firm) -> FilteredFirm {
 	}
 }
 
-// depricated
-pub fn filter_ext_firm_record(
-	firm: &ExtFirmWithOaiDescription,
-) -> ExtFilteredFirmWithOaiDescription {
-	ExtFilteredFirmWithOaiDescription {
-		firm_id: firm.firm_id.to_string(),
-		category_id: firm.category_id.to_string(),
-		name: firm.name.to_owned(),
-		address: firm.address.to_owned(),
-		site: firm.site.to_owned(),
-		default_phone: firm.default_phone.to_owned(),
-		oai_description_value: firm.oai_description_value.to_owned(),
-		description: firm.description.to_owned(),
-	}
-}
-
 pub fn filter_firm_for_map_record(firm: &FirmForMap) -> FilteredFirmForMap {
 	FilteredFirmForMap {
 		name: firm.name.to_owned(),
