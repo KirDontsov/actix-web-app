@@ -16,6 +16,7 @@ pub fn filter_page_record(page: &Page) -> FilteredPage {
 			None => "".to_string(),
 		},
 		url: page.url.to_owned(),
+		page_photo: page.page_photo.to_owned(),
 		oai_value: page.oai_value.to_owned(),
 		created_ts: page.created_ts.to_owned(),
 	}

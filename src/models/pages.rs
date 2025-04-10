@@ -15,6 +15,7 @@ pub struct Page {
 	pub url: Option<String>,
 	pub prompt_value: Option<String>,
 	pub oai_value: Option<String>,
+	pub page_photo: Option<String>,
 	#[serde(rename = "createdTs")]
 	pub created_ts: Option<DateTime<Utc>>,
 	#[serde(rename = "updatedTs")]
@@ -42,6 +43,7 @@ pub struct FilteredPage {
 	pub page_category_id: String,
 	pub user_id: String,
 	pub url: Option<String>,
+	pub page_photo: Option<String>,
 	pub oai_value: Option<String>,
 	#[serde(rename = "createdTs")]
 	pub created_ts: Option<DateTime<Utc>>,
@@ -52,7 +54,9 @@ pub struct FilteredPage {
 pub struct PageBlock {
 	pub page_block_id: Uuid,
 	pub page_id: Option<Uuid>,
-	pub page_block_type_id: Option<Uuid>,
+	pub page_block_title: Option<String>,
+	pub page_block_subtitle: Option<String>,
+	pub page_block_type: Option<i16>,
 	pub page_block_order: String,
 }
 
@@ -66,4 +70,5 @@ pub struct PageBlockSection {
 	pub subtitle: Option<String>,
 	pub text: Option<String>,
 	pub url: Option<String>,
+	pub photo: Option<String>,
 }
