@@ -151,8 +151,8 @@ async fn add_review_handler(
 		Review,
 		"INSERT INTO reviews (firm_id, text, author, rating, parsed) VALUES ($1, $2, $3, $4, $5) RETURNING *",
 		firm_id,
-		body.text.to_string().to_lowercase(),
-		body.author.to_string().to_lowercase(),
+		body.text.to_string(),
+		body.author.to_string(),
 		body.rating.to_string().to_lowercase(),
 		false
 	)
