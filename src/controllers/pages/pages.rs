@@ -8,6 +8,7 @@ use actix_web::{
 	HttpResponse, Responder,
 };
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::utils::filter_page_record;
 
@@ -149,14 +150,16 @@ async fn get_pages_handler(
 	HttpResponse::Ok().json(json_response)
 }
 
-#[get("/pages_by_firm")]
+#[get("/pages_by_firm/{id}")]
 async fn get_pages_by_firm_handler(
+	path: Path<Uuid>,
 	// opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
-	let pages_query_result = Page::get_pages(&data.db).await;
-	let page_message = "Что-то пошло не так во время чтения get_page_by_url";
+	let firm_id = &path.into_inner();
+	let pages_query_result = Page::get_pages_by_firm(&data.db, &firm_id).await;
+	let page_message = "Что-то пошло не так во время чтения /pages_by_firm/{id}";
 	if pages_query_result.is_err() {
 		return HttpResponse::InternalServerError()
 			.json(json!({"status": "error","message": &page_message}));

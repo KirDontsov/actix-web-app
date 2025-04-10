@@ -38,13 +38,13 @@ impl Page {
 	}
 
 	/// GET страница по url
-	pub async fn get_pages_by_firm(db: &Pool<Postgres>, url: &String) -> Result<Vec<Self>, CustomError> {
-		let pages_query_result = sqlx::query_as::<_, Page>("SELECT * FROM pages WHERE url = $1")
-			.bind(encode(url).to_string())
+	pub async fn get_pages_by_firm(db: &Pool<Postgres>, id: &Uuid) -> Result<Vec<Self>, CustomError> {
+		let pages_query_result = sqlx::query_as::<_, Page>("SELECT * FROM pages WHERE firm_id = $1")
+			.bind(id)
 			.fetch_all(db)
 			.await;
 
-		let message = "Что-то пошло не так во время запроса get_pages";
+		let message = "Что-то пошло не так во время запроса get_pages_by_firm";
 
 		match pages_query_result {
 			Ok(x) => Ok(x),
