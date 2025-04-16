@@ -38,9 +38,11 @@ impl Page {
 	}
 
 	/// GET страница по url
-	pub async fn get_pages_by_firm(db: &Pool<Postgres>, id: &Uuid) -> Result<Vec<Self>, CustomError> {
-		let pages_query_result = sqlx::query_as::<_, Page>("SELECT * FROM pages WHERE firm_id = $1")
+	pub async fn get_pages_by_firm(db: &Pool<Postgres>, id: &Uuid, limit: i64, offset: i64) -> Result<Vec<Self>, CustomError> {
+		let pages_query_result = sqlx::query_as::<_, Page>("SELECT * FROM pages WHERE firm_id = $1 LIMIT $2 OFFSET $3")
 			.bind(id)
+			.bind(&limit)
+			.bind(&offset)
 			.fetch_all(db)
 			.await;
 

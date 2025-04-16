@@ -1,5 +1,5 @@
 use crate::{
-	models::{Page, PageBlock, PageBlockSection},
+	models::{Page, PageBlock, PageBlockSection, FilterOptions, Count},
 	AppState,
 };
 use actix_web::{
@@ -153,12 +153,15 @@ async fn get_pages_handler(
 #[get("/pages_by_firm/{id}")]
 async fn get_pages_by_firm_handler(
 	path: Path<Uuid>,
-	// opts: web::Query<FilterOptions>,
+	opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	let firm_id = &path.into_inner();
-	let pages_query_result = Page::get_pages_by_firm(&data.db, &firm_id).await;
+	let limit = opts.limit.unwrap_or(10);
+	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+
+	let pages_query_result = Page::get_pages_by_firm(&data.db, &firm_id, limit as i64, offset as i64).await;
 	let page_message = "Что-то пошло не так во время чтения /pages_by_firm/{id}";
 	if pages_query_result.is_err() {
 		return HttpResponse::InternalServerError()
@@ -166,10 +169,26 @@ async fn get_pages_by_firm_handler(
 	}
 	let pages = pages_query_result.expect(&page_message);
 
+	let count_query_result = sqlx::query_as!(
+		Count,
+		"SELECT count(*) AS count FROM pages WHERE firm_id = $1",
+		&firm_id
+	)
+	.fetch_one(&data.db)
+	.await;
+
+	let pages_count_message = "Что-то пошло не так во время подсчета pages";
+	if count_query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error","message": &pages_count_message}));
+	}
+	let pages_count = count_query_result.expect(&pages_count_message);
+
 	let json_response = json!({
 		"status":  "success",
 		"data": json!({
 			"pages": pages,
+			"pages_count": &pages_count.count.unwrap()
 		})
 	});
 
