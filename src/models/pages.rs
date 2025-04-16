@@ -57,7 +57,7 @@ pub struct PageBlock {
 	pub page_block_title: Option<String>,
 	pub page_block_subtitle: Option<String>,
 	pub page_block_type: Option<i16>,
-	pub page_block_order: String,
+	pub page_block_order: Option<String>,
 }
 
 #[allow(non_snake_case)]
