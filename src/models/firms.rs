@@ -36,6 +36,7 @@ pub struct Firm {
 	pub rating: Option<String>,
 	pub reviews_count: Option<String>,
 	pub coords: Option<String>,
+	pub title: Option<String>,
 	pub ts: Option<TsVector>,
 	pub created_ts: Option<DateTime<Utc>>,
 	pub updated_ts: Option<DateTime<Utc>>,
@@ -71,8 +72,11 @@ pub struct FilteredFirm {
 	pub rating: Option<String>,
 	pub reviews_count: Option<String>,
 	pub default_phone: Option<String>,
+	pub default_email: Option<String>,
 	pub url: Option<String>,
 	pub coords: Option<String>,
+	pub floor: Option<String>,
+	pub title: Option<String>,
 }
 
 #[allow(non_snake_case)]
@@ -146,4 +150,26 @@ pub struct FilteredFirmForMap {
 pub struct UpdateFirmCoords {
 	pub firm_id: Uuid,
 	pub coords: String,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct UpdateFirm {
+	pub firm_id: Uuid,
+	pub category_id: Uuid,
+	pub city_id: Uuid,
+	pub name: String,
+	pub description: String,
+	pub address: String,
+	pub floor: String,
+	pub site: String,
+	pub default_email: String,
+	pub default_phone: String,
+	pub url: String,
+	pub rating: String,
+	pub reviews_count: String,
+	pub coords: String,
+	pub title: String,
+	pub created_ts: Option<DateTime<Utc>>,
+	pub updated_ts: Option<DateTime<Utc>>,
 }

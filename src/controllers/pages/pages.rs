@@ -1,5 +1,5 @@
 use crate::{
-	models::{Page, PageBlock, PageBlockSection, FilterOptions, Count},
+	models::{Count, FilterOptions, Page, PageBlock, PageBlockSection},
 	AppState,
 };
 use actix_web::{
@@ -161,7 +161,8 @@ async fn get_pages_by_firm_handler(
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
 
-	let pages_query_result = Page::get_pages_by_firm(&data.db, &firm_id, limit as i64, offset as i64).await;
+	let pages_query_result =
+		Page::get_pages_by_firm(&data.db, &firm_id, limit as i64, offset as i64).await;
 	let page_message = "Что-то пошло не так во время чтения /pages_by_firm/{id}";
 	if pages_query_result.is_err() {
 		return HttpResponse::InternalServerError()
