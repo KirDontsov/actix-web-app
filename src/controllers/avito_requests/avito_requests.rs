@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 #[get("/avito_requests/{id}")]
 #[has_any_role("Role::Admin", type = "Role")]
-async fn get_avito_requsts_handler(
+async fn get_avito_requests_handler	(
 	path: Path<Uuid>,
 	opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,

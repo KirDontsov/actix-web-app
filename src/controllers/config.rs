@@ -88,7 +88,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_pages_by_firm_handler)
 		// avito
 		.service(avito_crawler_handler)
-		.service(get_avito_requsts_handler)
+		.service(get_avito_requests_handler	)
 		.service(create_avito_requst_handler);
 
 	conf.service(scope);
