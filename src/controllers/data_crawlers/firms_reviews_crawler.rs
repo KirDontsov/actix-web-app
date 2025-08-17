@@ -56,10 +56,10 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
 	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
-	let firms_count = 1;
-		// Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
-		// 	.await
-		// 	.unwrap_or(0);
+	let firms_count =
+		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)
+			.await
+			.unwrap_or(0);
 
 	// получаем из базы начало счетчика
 	let start: i64 = get_counter(&data.db, &counter_id).await;
@@ -70,7 +70,11 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	for j in start.clone()..=firms_count {
 		println!("№: {}", &j + 1);
 		let firm =
-			Firm::get_firm_by_url(&data.db, &"luchshii-svet-tihaya-6-lit-m".to_string())
+			// Firm::get_firm_with_empty_field(&data.db, table.clone(), empty_field.clone(), j)
+			// .await
+			// .unwrap();
+
+			Firm::get_firm_by_city_category(&data.db, table.clone(), city_id, category_id, j)
 				.await
 				.unwrap();
 		let mut reviews: Vec<SaveReview> = Vec::new();

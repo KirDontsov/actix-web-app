@@ -16,8 +16,11 @@ pub fn filter_firm_record(firm: &Firm) -> FilteredFirm {
 		rating: firm.rating.to_owned(),
 		reviews_count: firm.reviews_count.to_owned(),
 		default_phone: firm.default_phone.to_owned(),
+		default_email: firm.default_email.to_owned(),
 		url: firm.url.to_owned(),
 		coords: firm.coords.to_owned(),
+		floor: firm.floor.to_owned(),
+		title: firm.title.to_owned(),
 	}
 }
 

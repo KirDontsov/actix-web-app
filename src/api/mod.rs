@@ -1,3 +1,4 @@
+pub mod avito_requests;
 pub mod categories;
 pub mod cities;
 pub mod counter;
@@ -8,11 +9,12 @@ pub mod pages;
 pub mod reviews;
 pub mod shared;
 
-pub use self::driver::*;
-pub use self::error::*;
+pub use self::avito_requests::*;
 pub use self::categories::*;
 pub use self::cities::*;
 pub use self::counter::*;
+pub use self::driver::*;
+pub use self::error::*;
 pub use self::firms::*;
 pub use self::pages::*;
 pub use self::reviews::*;

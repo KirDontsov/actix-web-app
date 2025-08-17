@@ -1,13 +1,19 @@
+use crate::controllers::auth::Role;
 use crate::{
-	models::{Category, City, Count, FilterExtOptions, FilteredFirm, FilteredFirmForMap, Firm},
+	jwt_auth::JwtMiddleware,
+	models::{
+		Category, City, Count, FilterExtOptions, FilteredFirm, FilteredFirmForMap, Firm, UpdateFirm,
+	},
 	utils::filter_firm_record::{filter_firm_for_map_record, filter_firm_record},
 	AppState,
 };
 use actix_web::{
-	get,
+	get, put,
 	web::{self, Path},
 	HttpResponse, Responder,
 };
+use actix_web_grants::proc_macro::has_any_role;
+use chrono::Utc;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -194,6 +200,75 @@ async fn get_firms_search_handler(
 		"status":  "success",
 		"data": json!({
 			"firms": &firms.into_iter().map(|firm| filter_firm_record(&firm)).collect::<Vec<FilteredFirm>>(),
+		})
+	});
+
+	HttpResponse::Ok().json(json_response)
+}
+
+#[put("/firm_by_url/{id}")]
+#[has_any_role("Role::Admin", type = "Role")]
+async fn update_firm_by_url_handler(
+	path: Path<String>,
+	opts: web::Json<UpdateFirm>,
+	data: web::Data<AppState>,
+	_: JwtMiddleware,
+) -> impl Responder {
+	let firm_url = &path.into_inner();
+
+	let name = &opts.name;
+	let address = &opts.address;
+	let floor = &opts.floor;
+	let site = &opts.site;
+	let default_email = &opts.default_email;
+	let default_phone = &opts.default_phone;
+	let description = &opts.description;
+	let coords = &opts.coords;
+	let rating = &opts.rating;
+	let reviews_count = &opts.reviews_count;
+	let title = &opts.title;
+
+	let updated_ts = Utc::now();
+
+	let firm = sqlx::query_as!(
+		Firm,
+		r#"UPDATE firms SET
+		name = $1,
+		address = $2,
+		floor = $3,
+		site = $4,
+		default_email = $5,
+		default_phone = $6,
+		description = $7,
+		coords = $8,
+		rating = $9,
+		reviews_count = $10,
+		title = $11,
+		updated_ts = $12
+	 	WHERE url = $13
+		RETURNING *"#,
+		name.to_string(),
+		address.to_string(),
+		floor.to_string(),
+		site.to_string(),
+		default_email.to_string(),
+		default_phone.to_string(),
+		description.to_string(),
+		coords.to_string(),
+		rating.to_string(),
+		reviews_count.to_string(),
+		title.to_string(),
+		updated_ts,
+		firm_url
+	)
+	.fetch_one(&data.db)
+	.await
+	.unwrap();
+
+	let json_response = json!({
+		"status":  "success",
+		"data": json!({
+			"user": filter_firm_record(&firm)
 		})
 	});
 
