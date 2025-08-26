@@ -1,6 +1,7 @@
 use actix_web::web;
 
 use crate::controllers::auth::*;
+use crate::controllers::avito_client::*;
 use crate::controllers::avito_requests::*;
 use crate::controllers::categories::*;
 use crate::controllers::cities::*;
@@ -88,7 +89,8 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_pages_by_firm_handler)
 		// avito
 		.service(avito_crawler_handler)
-		.service(get_avito_requests_handler	)
+		.service(get_avito_requests_handler)
+		.service(get_avito_token_handler)
 		.service(create_avito_requst_handler);
 
 	conf.service(scope);
