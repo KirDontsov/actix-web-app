@@ -6,10 +6,15 @@ use serde::{Deserialize, Serialize};
 pub struct AvitoRequest {
 	pub request_id: uuid::Uuid,
 	pub user_id: uuid::Uuid,
+	/// String that represents a search query
 	pub request: Option<String>,
+	/// String that represents a filter query
 	pub city: Option<String>,
+	/// String that represents a filter query
 	pub coords: Option<String>,
+	/// String that represents a filter query
 	pub radius: Option<String>,
+	/// String that represents a filter query
 	pub district: Option<String>,
 	#[serde(rename = "createdTs")]
 	pub created_ts: Option<DateTime<Utc>>,

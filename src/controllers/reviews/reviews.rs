@@ -33,7 +33,9 @@ async fn get_reviews_handler(
 	}
 	let reviews = query_result.expect(&reviews_message);
 
-	let reviews_count = Count::count(&data.db, table).await.unwrap_or(0);
+	let reviews_count = Count::count_smth_by_firm(&data.db, table, firm_id)
+		.await
+		.unwrap_or(0);
 
 	let json_response = json!({
 		"status":  "success",

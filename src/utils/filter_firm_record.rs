@@ -1,7 +1,4 @@
-use crate::models::{
-	ExtFilteredFirmWithOaiDescription, ExtFirmWithOaiDescription, FilteredFirm, FilteredFirmForMap,
-	Firm, FirmForMap,
-};
+use crate::models::{FilteredFirm, FilteredFirmForMap, Firm, FirmForMap};
 
 pub fn filter_firm_record(firm: &Firm) -> FilteredFirm {
 	FilteredFirm {

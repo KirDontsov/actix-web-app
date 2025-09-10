@@ -2,9 +2,8 @@ use crate::{
 	models::{LoginUserSchema, TokenClaims, User},
 	AppState,
 };
-use actix_web::cookie::SameSite;
 use actix_web::{
-	cookie::{time::Duration as ActixWebDuration, Cookie},
+	cookie::{time::Duration as ActixWebDuration, Cookie, SameSite},
 	post, web, HttpResponse, Responder,
 };
 use argon2::{
