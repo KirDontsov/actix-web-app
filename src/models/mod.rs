@@ -1,3 +1,4 @@
+pub mod avito_client;
 pub mod avito_requests;
 pub mod categories;
 pub mod cities;
@@ -13,6 +14,7 @@ pub mod shared;
 pub mod types;
 pub mod users;
 
+pub use self::avito_client::*;
 pub use self::avito_requests::*;
 pub use self::categories::*;
 pub use self::cities::*;

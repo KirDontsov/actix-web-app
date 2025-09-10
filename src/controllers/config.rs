@@ -91,6 +91,11 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(avito_crawler_handler)
 		.service(get_avito_requests_handler)
 		.service(get_avito_token_handler)
+		.service(get_avito_items)
+		.service(get_avito_user_profile)
+		.service(get_avito_item_analytics)
+		.service(get_avito_balance)
+		.service(update_avito_price)
 		.service(create_avito_requst_handler);
 
 	conf.service(scope);
