@@ -4,7 +4,7 @@ use crate::{
 	models::{
 		ApiError, AvitoGetBalanceApiResponse, AvitoGetItemsApiResponse, AvitoItemAnalyticsResponse,
 		AvitoTokenCredentials, AvitoTokenParams, AvitoTokenResponse, AvitoUserProfileResponse,
-		GetAvitoItemsParams, GetItemAnalyticsBody, UpdatePriceBody,
+		GetAvitoItemsParams, GetItemAnalyticsBody, UpdatePriceBody, AvitoEditorCategoryFieldsParams
 	},
 };
 use actix_web::{
@@ -17,7 +17,10 @@ use actix_web_grants::proc_macro::has_any_role;
 use serde_json::json;
 use std::env;
 
-use reqwest::header::{self, HeaderMap, HeaderValue};
+use reqwest::{
+	header::{self, HeaderMap, HeaderValue, HeaderName},
+	Client,
+};
 
 #[get("/avito/get_token")]
 #[has_any_role("Role::Admin", type = "Role")]
@@ -42,7 +45,7 @@ pub async fn get_avito_token_handler(_: JwtMiddleware) -> Result<HttpResponse, A
 	};
 
 	// Make request
-	let response = reqwest::Client::builder()
+	let response = Client::builder()
 		.danger_accept_invalid_certs(true)
 		.build()?
 		.post(format!("{}/token", url))
@@ -108,7 +111,7 @@ pub async fn get_avito_items(
 	let api_url = format!("{}/core/v1/items?page={}&per_page={}", url, page, per_page);
 
 	// Make request
-	let response = reqwest::Client::builder()
+	let response = Client::builder()
 		.danger_accept_invalid_certs(true)
 		.build()?
 		.get(&api_url)
@@ -157,7 +160,7 @@ pub async fn get_avito_balance(
 
 	let body = serde_json::json!({});
 
-	let response = reqwest::Client::builder()
+	let response = Client::builder()
 		.danger_accept_invalid_certs(true)
 		.build()?
 		.post(format!("{}/cpa/v3/balanceInfo", url))
@@ -213,7 +216,7 @@ pub async fn get_avito_user_profile(
 	let api_url = format!("{}/core/v1/accounts/self", url);
 
 	// Make request
-	let response = reqwest::Client::builder()
+	let response = Client::builder()
 		.danger_accept_invalid_certs(true)
 		.build()?
 		.get(&api_url)
@@ -278,7 +281,7 @@ pub async fn get_avito_item_analytics(
 	let api_url = format!("{}/stats/v2/accounts/{}/items", url, account_id);
 
 	// Make request
-	let response = reqwest::Client::builder()
+	let response = Client::builder()
 		.danger_accept_invalid_certs(true)
 		.build()?
 		.post(&api_url)
@@ -339,7 +342,7 @@ pub async fn update_avito_price(
 	let api_url = format!("{}/core/v1/items/{}/update_price", url, item_id);
 
 	// Make request
-	let response = reqwest::Client::builder()
+	let response = Client::builder()
 		.danger_accept_invalid_certs(true)
 		.build()?
 		.post(&api_url)
@@ -365,4 +368,106 @@ pub async fn update_avito_price(
 		"status": "success",
 		"data": update_price_data.result
 	})))
+}
+
+#[post("/avito/get_categories_tree")]
+#[has_any_role("Role::Admin", type = "Role")]
+pub async fn get_avito_categories_tree(
+	opts: web::Json<AvitoTokenParams>,
+    _: JwtMiddleware,
+) -> Result<HttpResponse, ApiError> {
+	let avito_token = opts.avito_token.clone();
+
+  let url = env::var("AVITO_BASE_URL")
+      .map_err(|_| ApiError::Other("AVITO_BASE_URL not set".to_string()))?;
+
+  // Build headers
+  let mut headers = header::HeaderMap::new();
+  headers.insert(
+		header::AUTHORIZATION,
+		format!("Bearer {}", avito_token).parse().unwrap(),
+	);
+ //    headers.insert(
+	// 	HeaderName::from_static("If-Modified-Since"),
+	// 	HeaderValue::from_static("Mon, 01 Aug 2025 00:00:00 UTC"),
+	// );
+
+  // Build URL for user docs tree endpoint
+  let api_url = format!("{}/autoload/v1/user-docs/tree", url);
+
+  // Make request
+  let response = Client::builder()
+      .danger_accept_invalid_certs(true)
+      .build()?
+      .get(&api_url)
+      .headers(headers)
+      .send()
+      .await?;
+
+  // Check response status
+  if !response.status().is_success() {
+      let status_code = response.status().as_u16();
+      let error_body = response.text().await?;
+      return Err(ApiError::AvitoApiError(status_code, error_body));
+  }
+
+  // Parse response
+  let response_text = response.text().await?;
+  let docs_tree_data: serde_json::Value = serde_json::from_str(&response_text)
+      .map_err(|e| ApiError::JsonParseError(e, response_text.clone()))?;
+
+  Ok(HttpResponse::Ok().json(json!({
+      "status": "success",
+      "data": docs_tree_data
+  })))
+}
+
+#[post("/avito/get_category_fields")]
+#[has_any_role("Role::Admin", type = "Role")]
+pub async fn get_avito_category_fields(
+    opts: web::Json<AvitoEditorCategoryFieldsParams>,
+    _: JwtMiddleware,
+) -> Result<HttpResponse, ApiError> {
+    let avito_token = opts.avito_token.clone();
+    let avito_slug = opts.avito_slug.clone();
+
+    let url = env::var("AVITO_BASE_URL")
+        .map_err(|_| ApiError::Other("AVITO_BASE_URL not set".to_string()))?;
+
+    // Build headers
+    let mut headers = header::HeaderMap::new();
+    headers.insert(
+        header::AUTHORIZATION,
+        format!("Bearer {}", avito_token).parse().unwrap(),
+    );
+    headers.insert(header::ACCEPT, HeaderValue::from_static("application/json"));
+
+    // Build URL for user docs node fields endpoint
+    let api_url = format!("{}/autoload/v1/user-docs/node/{}/fields", url, avito_slug);
+
+    // Make request
+    let response = Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()?
+        .get(&api_url)
+        .headers(headers)
+        .send()
+        .await?;
+
+    // Check response status
+    if !response.status().is_success() {
+        let status_code = response.status().as_u16();
+        let error_body = response.text().await?;
+        return Err(ApiError::AvitoApiError(status_code, error_body));
+    }
+
+    // Parse response
+    let response_text = response.text().await?;
+    let node_fields_data: serde_json::Value = serde_json::from_str(&response_text)
+        .map_err(|e| ApiError::JsonParseError(e, response_text.clone()))?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "status": "success",
+        "data": node_fields_data
+    })))
 }

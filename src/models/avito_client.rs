@@ -130,11 +130,115 @@ pub struct UpdatePriceBody {
 	pub price: usize,
 }
 
-// ============================= Error Handling ========================
+// Define the XML structures
+#[derive(Debug, Deserialize)]
+pub struct AvitoFeedAds {
+	#[serde(rename = "@formatVersion")]
+	pub format_version: String,
+	#[serde(rename = "@target")]
+	pub target: String,
+	#[serde(rename = "Ad")] // Changed from "Ads" to "Ad"
+	pub ads: Vec<AvitoFeedAd>,
+}
 
+#[derive(Debug, Deserialize)]
+pub struct AvitoFeedAd {
+	#[serde(rename = "Id")]
+	pub id: String,
+	#[serde(rename = "GoodsType")]
+	pub goods_type: Option<String>,
+	#[serde(rename = "Category")]
+	pub category: String,
+	#[serde(rename = "ProductType")]
+	pub product_type: Option<String>,
+	#[serde(rename = "Technic")]
+	pub technic: Option<String>,
+	#[serde(rename = "SparePartType")]
+	pub spare_part_type: Option<String>,
+	#[serde(rename = "TechnicSparePartType")]
+	pub technic_spare_part_type: Option<String>,
+	#[serde(rename = "Make")]
+	pub make: Option<String>,
+	#[serde(rename = "Availability")]
+	pub availability: Option<String>,
+	#[serde(rename = "AdType")]
+	pub ad_type: Option<String>,
+	#[serde(rename = "Condition")]
+	pub condition: Option<String>,
+	#[serde(rename = "Originality")]
+	pub originality: Option<String>,
+	#[serde(rename = "OriginalOEM")]
+	pub original_oem: Option<String>,
+	#[serde(rename = "OEM")]
+	pub oem: Option<String>,
+	#[serde(rename = "Price")]
+	pub price: Option<i32>,
+	#[serde(rename = "PriceWithVAT")]
+	pub price_with_vat: Option<String>,
+	#[serde(rename = "Images")]
+	pub images: Option<AvitoFeedImages>,
+	#[serde(rename = "VideoURL")]
+	pub video_url: Option<String>,
+	#[serde(rename = "VideoFileURL")]
+	pub video_file_url: Option<String>,
+	#[serde(rename = "ContactPhone")]
+	pub contact_phone: Option<String>,
+	#[serde(rename = "InternetCalls")]
+	pub internet_calls: Option<String>,
+	#[serde(rename = "ManagerName")]
+	pub manager_name: Option<String>,
+	#[serde(rename = "Brand")]
+	pub brand: Option<String>,
+	#[serde(rename = "WeightForDelivery")]
+	pub weight_for_delivery: Option<f64>,
+	#[serde(rename = "HeightForDelivery")]
+	pub height_for_delivery: Option<i32>,
+	#[serde(rename = "WidthForDelivery")]
+	pub width_for_delivery: Option<i32>,
+	#[serde(rename = "LengthForDelivery")]
+	pub length_for_delivery: Option<i32>,
+	#[serde(rename = "Delivery")]
+	pub delivery: Option<AvitoFeedDelivery>,
+	#[serde(rename = "MultiItem")]
+	pub multi_item: Option<String>,
+	#[serde(rename = "Address")]
+	pub address: Option<String>,
+	#[serde(rename = "Title")]
+	pub title: String,
+	#[serde(rename = "Description")]
+	pub description: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AvitoFeedImages {
+	#[serde(rename = "Image", default)]
+	pub images: Vec<AvitoFeedImage>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AvitoFeedImage {
+	#[serde(rename = "@url")]
+	pub url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AvitoFeedDelivery {
+	#[serde(rename = "Option", default)]
+	pub options: Vec<String>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct AvitoEditorCategoryFieldsParams {
+	pub avito_token: String,
+	pub avito_slug: String,
+}
+
+// ============================= Error Handling ========================
 // Define a custom error type
 #[derive(Debug)]
 pub enum ApiError {
+	InternalServerError(String),
 	ReqwestError(reqwest::Error),
 	AvitoApiError(u16, String),
 	JsonParseError(serde_json::Error, String),
@@ -146,6 +250,7 @@ impl fmt::Display for ApiError {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			ApiError::ReqwestError(e) => write!(f, "HTTP request error: {}", e),
+			ApiError::InternalServerError(e) => write!(f, "Server respond with error: {}", e),
 			ApiError::AvitoApiError(code, e) => write!(f, "Avito API error ({}): {}", code, e),
 			ApiError::JsonParseError(e, text) => {
 				write!(f, "JSON parse error: {} - Response text: {}", e, text)
@@ -159,6 +264,10 @@ impl fmt::Display for ApiError {
 impl actix_web::error::ResponseError for ApiError {
 	fn error_response(&self) -> HttpResponse {
 		match self {
+			ApiError::InternalServerError(_) => HttpResponse::InternalServerError().json(json!({
+				"status": "error",
+				"message": "Server respond with error"
+			})),
 			ApiError::ReqwestError(_) => HttpResponse::BadGateway().json(json!({
 				"status": "error",
 				"message": "Failed to communicate with Avito API"

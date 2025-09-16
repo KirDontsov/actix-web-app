@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod avito_client;
+pub mod avito_feed;
 pub mod avito_requests;
 pub mod categories;
 pub mod cities;
