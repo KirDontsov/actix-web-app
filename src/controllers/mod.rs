@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod avito_ads;
 pub mod avito_client;
 pub mod avito_feed;
 pub mod avito_requests;

@@ -1,6 +1,7 @@
 use actix_web::web;
 
 use crate::controllers::auth::*;
+use crate::controllers::avito_ads::*;
 use crate::controllers::avito_client::*;
 use crate::controllers::avito_feed::*;
 use crate::controllers::avito_requests::*;
@@ -101,6 +102,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_avito_categories_tree)
 		.service(get_avito_category_fields)
 		.service(get_avito_feeds)
+		.service(fetch_and_update_avito_ads)
 		.service(create_avito_requst_handler);
 
 	conf.service(scope);

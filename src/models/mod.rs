@@ -1,5 +1,6 @@
 pub mod avito_client;
 pub mod avito_feed;
+pub mod avito_reports;
 pub mod avito_requests;
 pub mod categories;
 pub mod cities;
@@ -17,6 +18,7 @@ pub mod users;
 
 pub use self::avito_client::*;
 pub use self::avito_feed::*;
+pub use self::avito_reports::*;
 pub use self::avito_requests::*;
 pub use self::categories::*;
 pub use self::cities::*;
