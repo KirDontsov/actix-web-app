@@ -7,8 +7,8 @@ use crate::controllers::avito_requests::*;
 use crate::controllers::categories::*;
 use crate::controllers::cities::*;
 use crate::controllers::data_crawlers::*;
-use crate::controllers::data_operations::*;
-use crate::controllers::data_processing::*;
+// use crate::controllers::data_operations::*;
+// use crate::controllers::data_processing::*;
 use crate::controllers::firms::*;
 use crate::controllers::images::*;
 use crate::controllers::oai_descriptions::*;
@@ -100,6 +100,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(import_avito_xml)
 		.service(get_avito_categories_tree)
 		.service(get_avito_category_fields)
+		.service(get_avito_feeds)
 		.service(create_avito_requst_handler);
 
 	conf.service(scope);

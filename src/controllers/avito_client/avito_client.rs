@@ -2,9 +2,10 @@ use crate::controllers::auth::Role;
 use crate::{
 	jwt_auth::JwtMiddleware,
 	models::{
-		ApiError, AvitoGetBalanceApiResponse, AvitoGetItemsApiResponse, AvitoItemAnalyticsResponse,
-		AvitoTokenCredentials, AvitoTokenParams, AvitoTokenResponse, AvitoUserProfileResponse,
-		GetAvitoItemsParams, GetItemAnalyticsBody, UpdatePriceBody, AvitoEditorCategoryFieldsParams
+		ApiError, AvitoEditorCategoryFieldsParams, AvitoGetBalanceApiResponse,
+		AvitoGetItemsApiResponse, AvitoItemAnalyticsResponse, AvitoTokenCredentials,
+		AvitoTokenParams, AvitoTokenResponse, AvitoUserProfileResponse, GetAvitoItemsParams,
+		GetItemAnalyticsBody, UpdatePriceBody,
 	},
 };
 use actix_web::{
@@ -18,7 +19,7 @@ use serde_json::json;
 use std::env;
 
 use reqwest::{
-	header::{self, HeaderMap, HeaderValue, HeaderName},
+	header::{self, HeaderMap, HeaderName, HeaderValue},
 	Client,
 };
 
@@ -374,100 +375,100 @@ pub async fn update_avito_price(
 #[has_any_role("Role::Admin", type = "Role")]
 pub async fn get_avito_categories_tree(
 	opts: web::Json<AvitoTokenParams>,
-    _: JwtMiddleware,
+	_: JwtMiddleware,
 ) -> Result<HttpResponse, ApiError> {
 	let avito_token = opts.avito_token.clone();
 
-  let url = env::var("AVITO_BASE_URL")
-      .map_err(|_| ApiError::Other("AVITO_BASE_URL not set".to_string()))?;
+	let url = env::var("AVITO_BASE_URL")
+		.map_err(|_| ApiError::Other("AVITO_BASE_URL not set".to_string()))?;
 
-  // Build headers
-  let mut headers = header::HeaderMap::new();
-  headers.insert(
+	// Build headers
+	let mut headers = header::HeaderMap::new();
+	headers.insert(
 		header::AUTHORIZATION,
 		format!("Bearer {}", avito_token).parse().unwrap(),
 	);
- //    headers.insert(
+	//    headers.insert(
 	// 	HeaderName::from_static("If-Modified-Since"),
 	// 	HeaderValue::from_static("Mon, 01 Aug 2025 00:00:00 UTC"),
 	// );
 
-  // Build URL for user docs tree endpoint
-  let api_url = format!("{}/autoload/v1/user-docs/tree", url);
+	// Build URL for user docs tree endpoint
+	let api_url = format!("{}/autoload/v1/user-docs/tree", url);
 
-  // Make request
-  let response = Client::builder()
-      .danger_accept_invalid_certs(true)
-      .build()?
-      .get(&api_url)
-      .headers(headers)
-      .send()
-      .await?;
+	// Make request
+	let response = Client::builder()
+		.danger_accept_invalid_certs(true)
+		.build()?
+		.get(&api_url)
+		.headers(headers)
+		.send()
+		.await?;
 
-  // Check response status
-  if !response.status().is_success() {
-      let status_code = response.status().as_u16();
-      let error_body = response.text().await?;
-      return Err(ApiError::AvitoApiError(status_code, error_body));
-  }
+	// Check response status
+	if !response.status().is_success() {
+		let status_code = response.status().as_u16();
+		let error_body = response.text().await?;
+		return Err(ApiError::AvitoApiError(status_code, error_body));
+	}
 
-  // Parse response
-  let response_text = response.text().await?;
-  let docs_tree_data: serde_json::Value = serde_json::from_str(&response_text)
-      .map_err(|e| ApiError::JsonParseError(e, response_text.clone()))?;
+	// Parse response
+	let response_text = response.text().await?;
+	let docs_tree_data: serde_json::Value = serde_json::from_str(&response_text)
+		.map_err(|e| ApiError::JsonParseError(e, response_text.clone()))?;
 
-  Ok(HttpResponse::Ok().json(json!({
-      "status": "success",
-      "data": docs_tree_data
-  })))
+	Ok(HttpResponse::Ok().json(json!({
+		"status": "success",
+		"data": docs_tree_data
+	})))
 }
 
 #[post("/avito/get_category_fields")]
 #[has_any_role("Role::Admin", type = "Role")]
 pub async fn get_avito_category_fields(
-    opts: web::Json<AvitoEditorCategoryFieldsParams>,
-    _: JwtMiddleware,
+	opts: web::Json<AvitoEditorCategoryFieldsParams>,
+	_: JwtMiddleware,
 ) -> Result<HttpResponse, ApiError> {
-    let avito_token = opts.avito_token.clone();
-    let avito_slug = opts.avito_slug.clone();
+	let avito_token = opts.avito_token.clone();
+	let avito_slug = opts.avito_slug.clone();
 
-    let url = env::var("AVITO_BASE_URL")
-        .map_err(|_| ApiError::Other("AVITO_BASE_URL not set".to_string()))?;
+	let url = env::var("AVITO_BASE_URL")
+		.map_err(|_| ApiError::Other("AVITO_BASE_URL not set".to_string()))?;
 
-    // Build headers
-    let mut headers = header::HeaderMap::new();
-    headers.insert(
-        header::AUTHORIZATION,
-        format!("Bearer {}", avito_token).parse().unwrap(),
-    );
-    headers.insert(header::ACCEPT, HeaderValue::from_static("application/json"));
+	// Build headers
+	let mut headers = header::HeaderMap::new();
+	headers.insert(
+		header::AUTHORIZATION,
+		format!("Bearer {}", avito_token).parse().unwrap(),
+	);
+	headers.insert(header::ACCEPT, HeaderValue::from_static("application/json"));
 
-    // Build URL for user docs node fields endpoint
-    let api_url = format!("{}/autoload/v1/user-docs/node/{}/fields", url, avito_slug);
+	// Build URL for user docs node fields endpoint
+	let api_url = format!("{}/autoload/v1/user-docs/node/{}/fields", url, avito_slug);
 
-    // Make request
-    let response = Client::builder()
-        .danger_accept_invalid_certs(true)
-        .build()?
-        .get(&api_url)
-        .headers(headers)
-        .send()
-        .await?;
+	// Make request
+	let response = Client::builder()
+		.danger_accept_invalid_certs(true)
+		.build()?
+		.get(&api_url)
+		.headers(headers)
+		.send()
+		.await?;
 
-    // Check response status
-    if !response.status().is_success() {
-        let status_code = response.status().as_u16();
-        let error_body = response.text().await?;
-        return Err(ApiError::AvitoApiError(status_code, error_body));
-    }
+	// Check response status
+	if !response.status().is_success() {
+		let status_code = response.status().as_u16();
+		let error_body = response.text().await?;
+		return Err(ApiError::AvitoApiError(status_code, error_body));
+	}
 
-    // Parse response
-    let response_text = response.text().await?;
-    let node_fields_data: serde_json::Value = serde_json::from_str(&response_text)
-        .map_err(|e| ApiError::JsonParseError(e, response_text.clone()))?;
+	// Parse response
+	let response_text = response.text().await?;
+	let node_fields_data: serde_json::Value = serde_json::from_str(&response_text)
+		.map_err(|e| ApiError::JsonParseError(e, response_text.clone()))?;
 
-    Ok(HttpResponse::Ok().json(json!({
-        "status": "success",
-        "data": node_fields_data
-    })))
+	Ok(HttpResponse::Ok().json(json!({
+		"status": "success",
+		"data": node_fields_data
+	})))
 }
