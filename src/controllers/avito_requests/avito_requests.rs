@@ -14,6 +14,20 @@ use actix_web_grants::proc_macro::has_any_role;
 use serde_json::json;
 use uuid::Uuid;
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AvitoRequestMessage {
+	pub id: Uuid,
+	pub user_id: Uuid,
+	pub request: String,
+	pub city: String,
+	pub coords: String,
+	pub radius: String,
+	pub district: String,
+	pub created_ts: chrono::DateTime<chrono::Utc>,
+}
+
 #[get("/avito_requests/{id}")]
 #[has_any_role("Role::Admin", type = "Role")]
 async fn get_avito_requests_handler(
@@ -52,13 +66,13 @@ async fn get_avito_requests_handler(
 
 #[post("/avito_requests/{id}")]
 #[has_any_role("Role::Admin", type = "Role")]
-async fn create_avito_requst_handler(
+async fn create_avito_request_handler(
 	path: Path<Uuid>,
 	body: web::Json<SaveAvitoRequest>,
 	data: web::Data<AppState>,
 	_: JwtMiddleware,
 ) -> impl Responder {
-	let user_id = &path.into_inner();
+	let user_id = path.into_inner();
 	let request = &body.request;
 	let city = &body.city;
 	let coords = &body.coords;
@@ -66,29 +80,76 @@ async fn create_avito_requst_handler(
 	let district = &body.district;
 
 	let query_result = sqlx::query_as!(
-		AvitoRequest,
-		"INSERT INTO avito_requests (user_id, request, city, coords, radius, district) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-		user_id,
-		request.to_string(),
-		city.to_string(),
-		coords.to_string(),
-		radius.to_string(),
-		district.to_string(),
-	)
-	.fetch_one(&data.db)
-	.await;
+        AvitoRequest,
+        "INSERT INTO avito_requests (user_id, request, city, coords, radius, district) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+        user_id,
+        request.to_string(),
+        city.to_string(),
+        coords.to_string(),
+        radius.to_string(),
+        district.to_string(),
+    )
+		.fetch_one(&data.db)
+		.await;
 
 	match query_result {
 		Ok(avito_request) => {
-			let avito_request_response = serde_json::json!({"status": "success","data": serde_json::json!({
-				"avito_request": filter_add_avito_request_record(&avito_request)
-			})});
+			// Create message
+			let message = AvitoRequestMessage {
+				id: avito_request.request_id.clone(),
+				user_id: avito_request.user_id.clone(),
+				request: avito_request.request.clone().expect("REASON"),
+				city: avito_request.city.clone().expect("REASON"),
+				coords: avito_request.coords.clone().expect("REASON"),
+				radius: avito_request.radius.clone().expect("REASON"),
+				district: avito_request.district.clone().expect("REASON"),
+				created_ts: avito_request.created_ts.clone().expect("REASON"),
+			};
 
-			return HttpResponse::Ok().json(avito_request_response);
+			// Publish to RabbitMQ
+			match publish_avito_request(&data.rabbitmq_channel, &message).await {
+				Ok(_) => {
+					let avito_request_response = serde_json::json!({
+                        "status": "success",
+                        "data": serde_json::json!({
+                            "avito_request": filter_add_avito_request_record(&avito_request.clone())
+                        })
+                    });
+					HttpResponse::Ok().json(avito_request_response)
+				}
+				Err(e) => {
+					log::error!("Failed to publish message: {}", e);
+					// You might want to handle this differently - maybe still return success
+					// but log the error, or return a partial success response
+					HttpResponse::Accepted().json(serde_json::json!({
+                        "status": "success",
+                        "message": "Request created but notification failed"
+                    }))
+				}
+			}
 		}
 		Err(e) => {
-			return HttpResponse::InternalServerError()
-				.json(serde_json::json!({"status": "error","message": format!("{:?}", e)}));
+			HttpResponse::InternalServerError()
+				.json(serde_json::json!({"status": "error","message": format!("{:?}", e)}))
 		}
 	}
+}
+
+// Message publishing function
+async fn publish_avito_request(
+	channel: &lapin::Channel,
+	message: &AvitoRequestMessage,
+) -> Result<(), Box<dyn std::error::Error>> {
+	let message_json = serde_json::to_string(message)?;
+
+	channel.basic_publish(
+		"",
+		"avito_requests",
+		lapin::options::BasicPublishOptions::default(),
+		message_json.as_bytes(),
+		lapin::BasicProperties::default(),
+	).await?;
+
+	log::info!("Published Avito request message for user: {}", message.user_id);
+	Ok(())
 }

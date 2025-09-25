@@ -104,7 +104,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_avito_feeds)
 		.service(get_last_avito_feed)
 		.service(fetch_and_update_avito_ads)
-		.service(create_avito_requst_handler);
+		.service(create_avito_request_handler);
 
 	conf.service(scope);
 }
