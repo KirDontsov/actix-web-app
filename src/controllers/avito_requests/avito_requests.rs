@@ -110,11 +110,11 @@ async fn create_avito_request_handler(
 			match publish_avito_request(&data.rabbitmq_channel, &message).await {
 				Ok(_) => {
 					let avito_request_response = serde_json::json!({
-                        "status": "success",
-                        "data": serde_json::json!({
-                            "avito_request": filter_add_avito_request_record(&avito_request.clone())
-                        })
-                    });
+						"status": "success",
+						"data": serde_json::json!({
+							"avito_request": filter_add_avito_request_record(&avito_request.clone())
+						})
+					});
 					HttpResponse::Ok().json(avito_request_response)
 				}
 				Err(e) => {
@@ -122,16 +122,14 @@ async fn create_avito_request_handler(
 					// You might want to handle this differently - maybe still return success
 					// but log the error, or return a partial success response
 					HttpResponse::Accepted().json(serde_json::json!({
-                        "status": "success",
-                        "message": "Request created but notification failed"
-                    }))
+						"status": "success",
+						"message": "Request created but notification failed"
+					}))
 				}
 			}
 		}
-		Err(e) => {
-			HttpResponse::InternalServerError()
-				.json(serde_json::json!({"status": "error","message": format!("{:?}", e)}))
-		}
+		Err(e) => HttpResponse::InternalServerError()
+			.json(serde_json::json!({"status": "error","message": format!("{:?}", e)})),
 	}
 }
 
@@ -142,14 +140,19 @@ async fn publish_avito_request(
 ) -> Result<(), Box<dyn std::error::Error>> {
 	let message_json = serde_json::to_string(message)?;
 
-	channel.basic_publish(
-		"",
-		"avito_requests",
-		lapin::options::BasicPublishOptions::default(),
-		message_json.as_bytes(),
-		lapin::BasicProperties::default(),
-	).await?;
+	channel
+		.basic_publish(
+			"",
+			"avito_requests",
+			lapin::options::BasicPublishOptions::default(),
+			message_json.as_bytes(),
+			lapin::BasicProperties::default(),
+		)
+		.await?;
 
-	log::info!("Published Avito request message for user: {}", message.user_id);
+	log::info!(
+		"Published Avito request message for user: {}",
+		message.user_id
+	);
 	Ok(())
 }

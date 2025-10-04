@@ -1,4 +1,5 @@
-use actix_web::web;
+use crate::AppState;
+use actix_web::{web, HttpRequest};
 
 use crate::controllers::auth::*;
 use crate::controllers::avito_ads::*;
@@ -21,6 +22,7 @@ use crate::controllers::reviews::*;
 use crate::controllers::routes::*;
 use crate::controllers::types::*;
 use crate::controllers::user::*;
+use crate::controllers::websocket::*;
 
 pub fn config(conf: &mut web::ServiceConfig) {
 	let scope = web::scope("/api")
@@ -104,7 +106,16 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_avito_feeds)
 		.service(get_last_avito_feed)
 		.service(fetch_and_update_avito_ads)
-		.service(create_avito_request_handler);
+		.service(create_avito_request_handler)
+		.route(
+			"/ws",
+			web::get().to(
+				|req: HttpRequest, body: web::Payload, data: web::Data<AppState>| async move {
+					let websocket_connections = data.websocket_connections.clone();
+					websocket_handler(req, body, websocket_connections).await
+				},
+			),
+		);
 
 	conf.service(scope);
 }

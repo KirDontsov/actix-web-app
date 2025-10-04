@@ -212,11 +212,13 @@ dependencies = [
  "actix-cors",
  "actix-web",
  "actix-web-grants",
+ "actix-ws",
  "argon2",
  "chrono",
  "csv",
  "dotenv",
  "env_logger",
+ "futures",
  "glob",
  "hyper 0.14.32",
  "hyper-tls 0.5.0",
@@ -260,6 +262,19 @@ checksum = "5e03865e96db7fc34438d3f4aa330f81f537652f58f8b3728ddc623038055274"
 dependencies = [
  "actix-grants-proc-macro",
  "actix-web",
+]
+
+[[package]]
+name = "actix-ws"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "535aec173810be3ca6f25dd5b4d431ae7125d62000aa3cbae1ec739921b02cf3"
+dependencies = [
+ "actix-codec",
+ "actix-http",
+ "actix-web",
+ "futures-core",
+ "tokio",
 ]
 
 [[package]]

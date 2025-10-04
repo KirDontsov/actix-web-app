@@ -11,8 +11,9 @@ use actix_web::{web, App, HttpServer};
 use actix_web_grants::GrantsMiddleware;
 use config::Config;
 use dotenv::dotenv;
-use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use lapin::Channel;
+use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
+use std::sync::Arc;
 
 use crate::controllers::auth::extract;
 
@@ -20,6 +21,7 @@ pub struct AppState {
 	db: Pool<Postgres>,
 	rabbitmq_channel: Channel,
 	env: Config,
+	websocket_connections: web::Data<crate::controllers::websocket::WebSocketConnections>,
 }
 
 #[actix_web::main]
@@ -49,7 +51,8 @@ async fn main() -> std::io::Result<()> {
 
 	// Connect to RabbitMQ
 	let addr = "amqp://guest:guest@localhost:5672";
-	let conn = match lapin::Connection::connect(addr, lapin::ConnectionProperties::default()).await {
+	let conn = match lapin::Connection::connect(addr, lapin::ConnectionProperties::default()).await
+	{
 		Ok(pool) => {
 			println!("✅ Connection to the RabbitMQ is successful!");
 			pool
@@ -73,6 +76,24 @@ async fn main() -> std::io::Result<()> {
 	log::debug!("Channel status: {:?}", channel.status());
 	log::debug!("Channel state: {:?}", channel.status().state());
 
+	// Create WebSocket connections manager
+	let websocket_connections = crate::controllers::websocket::WebSocketConnections::new();
+	let websocket_connections_data = web::Data::new(websocket_connections.clone());
+
+	// Start RabbitMQ consumer
+	let rabbitmq_channel_clone = channel.clone();
+	let ws_connections_clone = Arc::new(websocket_connections.clone());
+	tokio::spawn(async move {
+		if let Err(e) = crate::controllers::rabbitmq_consumer::RabbitMQConsumer::start_consumer(
+			rabbitmq_channel_clone,
+			ws_connections_clone,
+		)
+		.await
+		{
+			eprintln!("Error starting RabbitMQ consumer: {}", e);
+		}
+	});
+
 	println!("✅ Server started successfully on http://localhost:8080/api");
 
 	HttpServer::new(move || {
@@ -82,6 +103,7 @@ async fn main() -> std::io::Result<()> {
 				db: pool.clone(),
 				rabbitmq_channel: channel.clone(),
 				env: config.clone(),
+				websocket_connections: websocket_connections_data.clone(),
 			}))
 			.configure(controllers::config)
 			.wrap(Cors::permissive())

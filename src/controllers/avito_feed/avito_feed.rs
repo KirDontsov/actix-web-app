@@ -1,8 +1,7 @@
-use crate::controllers::auth::Role;
 use crate::{
 	jwt_auth::JwtMiddleware,
 	models::{
-		AdResponse, ApiError, AvitoFeedAds, FeedJoinRow, FeedQueryParams, FeedResponse,
+		AdResponse, ApiError, FeedQueryParams, FeedResponse,
 		FieldResponse, FieldValueResponse, XmlAd,
 	},
 	AppState,
@@ -12,23 +11,20 @@ use actix_web::{
 	web::{self},
 	HttpResponse,
 };
-use actix_web_grants::proc_macro::has_any_role;
 
-use quick_xml::events::{attributes::Attribute, Event};
+use quick_xml::events::{Event};
 use quick_xml::Reader;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use sqlx::Row;
 use sqlx::{Postgres, Transaction};
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::time::Duration;
 use uuid::Uuid;
 
 // TODO: add import file form
 // 1. By link
 // 2. By import file
+// 3. add roles policy
 
 #[post("/avito/import-xml")]
 pub async fn import_avito_xml(
@@ -455,30 +451,34 @@ pub async fn get_avito_feeds(
 	.map_err(|e| ApiError::InternalServerError(format!("Failed to fetch feeds: {}", e)))?;
 
 	// Fetch total count of feeds
-	let count_row = sqlx::query!(
-		r#"SELECT COUNT(*) as count FROM avito_feeds"#,
-	)
-	.fetch_one(&data.db)
-	.await
-	.map_err(|e| ApiError::InternalServerError(format!("Failed to fetch feed count: {}", e)))?;
+	let count_row = sqlx::query!(r#"SELECT COUNT(*) as count FROM avito_feeds"#,)
+		.fetch_one(&data.db)
+		.await
+		.map_err(|e| ApiError::InternalServerError(format!("Failed to fetch feed count: {}", e)))?;
 
 	let total_feeds = count_row.count.unwrap_or(0) as u32;
 
 	// Transform rows into our structs using proper grouping
 	let mut feeds: std::collections::HashMap<Uuid, FeedResponse> = std::collections::HashMap::new();
 	let mut ads: std::collections::HashMap<Uuid, AdResponse> = std::collections::HashMap::new();
-	let mut fields: std::collections::HashMap<Uuid, FieldResponse> = std::collections::HashMap::new();
+	let mut fields: std::collections::HashMap<Uuid, FieldResponse> =
+		std::collections::HashMap::new();
 
 	for row in &rows {
 		// Extract feed information
-		let feed_id: Uuid = row.try_get("feed_id")
+		let feed_id: Uuid = row
+			.try_get("feed_id")
 			.map_err(|e| ApiError::InternalServerError(format!("Failed to get feed_id: {}", e)))?;
-		let account_id: Uuid = row.try_get("account_id")
-			.map_err(|e| ApiError::InternalServerError(format!("Failed to get account_id: {}", e)))?;
-		let category: String = row.try_get("category")
+		let account_id: Uuid = row.try_get("account_id").map_err(|e| {
+			ApiError::InternalServerError(format!("Failed to get account_id: {}", e))
+		})?;
+		let category: String = row
+			.try_get("category")
 			.map_err(|e| ApiError::InternalServerError(format!("Failed to get category: {}", e)))?;
-		let feed_created_ts: chrono::DateTime<chrono::Utc> = row.try_get("feed_created_ts")
-			.map_err(|e| ApiError::InternalServerError(format!("Failed to get feed_created_ts: {}", e)))?;
+		let feed_created_ts: chrono::DateTime<chrono::Utc> =
+			row.try_get("feed_created_ts").map_err(|e| {
+				ApiError::InternalServerError(format!("Failed to get feed_created_ts: {}", e))
+			})?;
 
 		// Create or get feed
 		feeds.entry(feed_id).or_insert_with(|| FeedResponse {
@@ -491,16 +491,22 @@ pub async fn get_avito_feeds(
 
 		// Handle ad level (might be NULL due to LEFT JOIN)
 		if let Ok(ad_id) = row.try_get::<Uuid, _>("ad_id") {
-			let avito_ad_id: String = row.try_get("avito_ad_id")
-				.map_err(|e| ApiError::InternalServerError(format!("Failed to get avito_ad_id: {}", e)))?;
-			let parsed_id: String = row.try_get("parsed_id")
-				.map_err(|e| ApiError::InternalServerError(format!("Failed to get parsed_id: {}", e)))?;
-			let is_active: bool = row.try_get("is_active")
-				.map_err(|e| ApiError::InternalServerError(format!("Failed to get is_active: {}", e)))?;
-			let status: String = row.try_get("status")
-				.map_err(|e| ApiError::InternalServerError(format!("Failed to get status: {}", e)))?;
-			let ad_created_ts: chrono::DateTime<chrono::Utc> = row.try_get("ad_created_ts")
-				.map_err(|e| ApiError::InternalServerError(format!("Failed to get ad_created_ts: {}", e)))?;
+			let avito_ad_id: String = row.try_get("avito_ad_id").map_err(|e| {
+				ApiError::InternalServerError(format!("Failed to get avito_ad_id: {}", e))
+			})?;
+			let parsed_id: String = row.try_get("parsed_id").map_err(|e| {
+				ApiError::InternalServerError(format!("Failed to get parsed_id: {}", e))
+			})?;
+			let is_active: bool = row.try_get("is_active").map_err(|e| {
+				ApiError::InternalServerError(format!("Failed to get is_active: {}", e))
+			})?;
+			let status: String = row.try_get("status").map_err(|e| {
+				ApiError::InternalServerError(format!("Failed to get status: {}", e))
+			})?;
+			let ad_created_ts: chrono::DateTime<chrono::Utc> =
+				row.try_get("ad_created_ts").map_err(|e| {
+					ApiError::InternalServerError(format!("Failed to get ad_created_ts: {}", e))
+				})?;
 
 			// Create or get ad
 			ads.entry(ad_id).or_insert_with(|| AdResponse {
@@ -515,14 +521,22 @@ pub async fn get_avito_feeds(
 
 			// Handle field level (might be NULL due to LEFT JOIN)
 			if let Ok(field_id) = row.try_get::<Uuid, _>("field_id") {
-				let tag: String = row.try_get("tag")
-					.map_err(|e| ApiError::InternalServerError(format!("Failed to get tag: {}", e)))?;
-				let data_type: String = row.try_get("data_type")
-					.map_err(|e| ApiError::InternalServerError(format!("Failed to get data_type: {}", e)))?;
-				let field_type: String = row.try_get("field_type")
-					.map_err(|e| ApiError::InternalServerError(format!("Failed to get field_type: {}", e)))?;
-				let field_created_ts: chrono::DateTime<chrono::Utc> = row.try_get("field_created_ts")
-					.map_err(|e| ApiError::InternalServerError(format!("Failed to get field_created_ts: {}", e)))?;
+				let tag: String = row.try_get("tag").map_err(|e| {
+					ApiError::InternalServerError(format!("Failed to get tag: {}", e))
+				})?;
+				let data_type: String = row.try_get("data_type").map_err(|e| {
+					ApiError::InternalServerError(format!("Failed to get data_type: {}", e))
+				})?;
+				let field_type: String = row.try_get("field_type").map_err(|e| {
+					ApiError::InternalServerError(format!("Failed to get field_type: {}", e))
+				})?;
+				let field_created_ts: chrono::DateTime<chrono::Utc> =
+					row.try_get("field_created_ts").map_err(|e| {
+						ApiError::InternalServerError(format!(
+							"Failed to get field_created_ts: {}",
+							e
+						))
+					})?;
 
 				// Create or get field
 				fields.entry(field_id).or_insert_with(|| FieldResponse {
@@ -536,10 +550,16 @@ pub async fn get_avito_feeds(
 
 				// Handle field value level (might be NULL due to LEFT JOIN)
 				if let Ok(field_value_id) = row.try_get::<Uuid, _>("field_value_id") {
-					let value: String = row.try_get("value")
-						.map_err(|e| ApiError::InternalServerError(format!("Failed to get value: {}", e)))?;
-					let value_created_ts: chrono::DateTime<chrono::Utc> = row.try_get("value_created_ts")
-						.map_err(|e| ApiError::InternalServerError(format!("Failed to get value_created_ts: {}", e)))?;
+					let value: String = row.try_get("value").map_err(|e| {
+						ApiError::InternalServerError(format!("Failed to get value: {}", e))
+					})?;
+					let value_created_ts: chrono::DateTime<chrono::Utc> =
+						row.try_get("value_created_ts").map_err(|e| {
+							ApiError::InternalServerError(format!(
+								"Failed to get value_created_ts: {}",
+								e
+							))
+						})?;
 
 					// Add field value to field
 					if let Some(field) = fields.get_mut(&field_id) {
@@ -617,7 +637,7 @@ pub async fn get_last_avito_feed(
 	let page = opts.page.unwrap_or(1);
 	let limit = opts.limit.unwrap_or(10);
 	let offset = (page - 1) * limit;
-	
+
 	// First, get the most recent feed
 	let latest_feed_row = sqlx::query!(
 		r#"SELECT feed_id, account_id, category, created_ts 
@@ -628,7 +648,7 @@ pub async fn get_last_avito_feed(
 	.fetch_optional(&data.db)
 	.await
 	.map_err(|e| ApiError::InternalServerError(format!("Failed to fetch latest feed: {}", e)))?;
-	
+
 	// If no feed exists, return empty response
 	let latest_feed = match latest_feed_row {
 		Some(feed) => feed,
@@ -645,7 +665,7 @@ pub async fn get_last_avito_feed(
 			})));
 		}
 	};
-	
+
 	// First, get the paginated list of ad IDs for this feed
 	let ad_ids_rows = sqlx::query!(
 		r#"SELECT ad_id FROM avito_ads
@@ -659,16 +679,16 @@ pub async fn get_last_avito_feed(
 	.fetch_all(&data.db)
 	.await
 	.map_err(|e| ApiError::InternalServerError(format!("Failed to fetch ad IDs: {}", e)))?;
-	
+
 	// Extract ad IDs into a vector
 	let ad_ids: Vec<Uuid> = ad_ids_rows.into_iter().map(|row| row.ad_id).collect();
-	
+
 	// If we have ad IDs, get all the data for these ads
 	let rows = if !ad_ids.is_empty() {
 		// Convert Uuid vector to a format we can use in the query
 		// For simplicity, we'll use a separate query for each ad ID and combine results
 		let mut all_rows = Vec::new();
-		
+
 		for ad_id in &ad_ids {
 			let ad_rows = sqlx::query(
 				r#"SELECT
@@ -690,21 +710,23 @@ pub async fn get_last_avito_feed(
 				LEFT JOIN avito_ad_fields af ON a.ad_id = af.ad_id
 				LEFT JOIN avito_ad_field_values afv ON af.field_id = afv.field_id
 				WHERE a.ad_id = $1
-				ORDER BY a.created_ts DESC, af.created_ts DESC"#
+				ORDER BY a.created_ts DESC, af.created_ts DESC"#,
 			)
 			.bind(ad_id)
 			.fetch_all(&data.db)
 			.await
-			.map_err(|e| ApiError::InternalServerError(format!("Failed to fetch ad data: {}", e)))?;
-			
+			.map_err(|e| {
+				ApiError::InternalServerError(format!("Failed to fetch ad data: {}", e))
+			})?;
+
 			all_rows.extend(ad_rows);
 		}
-		
+
 		all_rows
 	} else {
 		Vec::new()
 	};
-	
+
 	// Get total count of ads for this feed
 	let count_row = sqlx::query!(
 		r#"SELECT COUNT(*) as count FROM avito_ads WHERE feed_id = $1"#,
@@ -713,27 +735,34 @@ pub async fn get_last_avito_feed(
 	.fetch_one(&data.db)
 	.await
 	.map_err(|e| ApiError::InternalServerError(format!("Failed to fetch ad count: {}", e)))?;
-	
+
 	let total_ads = count_row.count.unwrap_or(0) as u32;
-	
+
 	// Transform rows into our structs using proper grouping
 	let mut ads: std::collections::HashMap<Uuid, AdResponse> = std::collections::HashMap::new();
-	let mut fields: std::collections::HashMap<Uuid, FieldResponse> = std::collections::HashMap::new();
-	
+	let mut fields: std::collections::HashMap<Uuid, FieldResponse> =
+		std::collections::HashMap::new();
+
 	for row in &rows {
 		// Handle ad level (might be NULL due to LEFT JOIN)
 		if let Ok(ad_id) = row.try_get::<Uuid, _>("ad_id") {
-			let avito_ad_id: String = row.try_get("avito_ad_id")
-				.map_err(|e| ApiError::InternalServerError(format!("Failed to get avito_ad_id: {}", e)))?;
-			let parsed_id: String = row.try_get("parsed_id")
-				.map_err(|e| ApiError::InternalServerError(format!("Failed to get parsed_id: {}", e)))?;
-			let is_active: bool = row.try_get("is_active")
-				.map_err(|e| ApiError::InternalServerError(format!("Failed to get is_active: {}", e)))?;
-			let status: String = row.try_get("status")
-				.map_err(|e| ApiError::InternalServerError(format!("Failed to get status: {}", e)))?;
-			let ad_created_ts: chrono::DateTime<chrono::Utc> = row.try_get("ad_created_ts")
-				.map_err(|e| ApiError::InternalServerError(format!("Failed to get ad_created_ts: {}", e)))?;
-			
+			let avito_ad_id: String = row.try_get("avito_ad_id").map_err(|e| {
+				ApiError::InternalServerError(format!("Failed to get avito_ad_id: {}", e))
+			})?;
+			let parsed_id: String = row.try_get("parsed_id").map_err(|e| {
+				ApiError::InternalServerError(format!("Failed to get parsed_id: {}", e))
+			})?;
+			let is_active: bool = row.try_get("is_active").map_err(|e| {
+				ApiError::InternalServerError(format!("Failed to get is_active: {}", e))
+			})?;
+			let status: String = row.try_get("status").map_err(|e| {
+				ApiError::InternalServerError(format!("Failed to get status: {}", e))
+			})?;
+			let ad_created_ts: chrono::DateTime<chrono::Utc> =
+				row.try_get("ad_created_ts").map_err(|e| {
+					ApiError::InternalServerError(format!("Failed to get ad_created_ts: {}", e))
+				})?;
+
 			// Create or get ad
 			ads.entry(ad_id).or_insert_with(|| AdResponse {
 				ad_id,
@@ -744,18 +773,26 @@ pub async fn get_last_avito_feed(
 				created_ts: ad_created_ts,
 				fields: Vec::new(),
 			});
-			
+
 			// Handle field level (might be NULL due to LEFT JOIN)
 			if let Ok(field_id) = row.try_get::<Uuid, _>("field_id") {
-				let tag: String = row.try_get("tag")
-					.map_err(|e| ApiError::InternalServerError(format!("Failed to get tag: {}", e)))?;
-				let data_type: String = row.try_get("data_type")
-					.map_err(|e| ApiError::InternalServerError(format!("Failed to get data_type: {}", e)))?;
-				let field_type: String = row.try_get("field_type")
-					.map_err(|e| ApiError::InternalServerError(format!("Failed to get field_type: {}", e)))?;
-				let field_created_ts: chrono::DateTime<chrono::Utc> = row.try_get("field_created_ts")
-					.map_err(|e| ApiError::InternalServerError(format!("Failed to get field_created_ts: {}", e)))?;
-				
+				let tag: String = row.try_get("tag").map_err(|e| {
+					ApiError::InternalServerError(format!("Failed to get tag: {}", e))
+				})?;
+				let data_type: String = row.try_get("data_type").map_err(|e| {
+					ApiError::InternalServerError(format!("Failed to get data_type: {}", e))
+				})?;
+				let field_type: String = row.try_get("field_type").map_err(|e| {
+					ApiError::InternalServerError(format!("Failed to get field_type: {}", e))
+				})?;
+				let field_created_ts: chrono::DateTime<chrono::Utc> =
+					row.try_get("field_created_ts").map_err(|e| {
+						ApiError::InternalServerError(format!(
+							"Failed to get field_created_ts: {}",
+							e
+						))
+					})?;
+
 				// Create or get field
 				fields.entry(field_id).or_insert_with(|| FieldResponse {
 					field_id,
@@ -765,14 +802,20 @@ pub async fn get_last_avito_feed(
 					created_ts: field_created_ts,
 					values: Vec::new(),
 				});
-				
+
 				// Handle field value level (might be NULL due to LEFT JOIN)
 				if let Ok(field_value_id) = row.try_get::<Uuid, _>("field_value_id") {
-					let value: String = row.try_get("value")
-						.map_err(|e| ApiError::InternalServerError(format!("Failed to get value: {}", e)))?;
-					let value_created_ts: chrono::DateTime<chrono::Utc> = row.try_get("value_created_ts")
-						.map_err(|e| ApiError::InternalServerError(format!("Failed to get value_created_ts: {}", e)))?;
-					
+					let value: String = row.try_get("value").map_err(|e| {
+						ApiError::InternalServerError(format!("Failed to get value: {}", e))
+					})?;
+					let value_created_ts: chrono::DateTime<chrono::Utc> =
+						row.try_get("value_created_ts").map_err(|e| {
+							ApiError::InternalServerError(format!(
+								"Failed to get value_created_ts: {}",
+								e
+							))
+						})?;
+
 					// Add field value to field
 					if let Some(field) = fields.get_mut(&field_id) {
 						field.values.push(FieldValueResponse {
@@ -785,7 +828,7 @@ pub async fn get_last_avito_feed(
 			}
 		}
 	}
-	
+
 	// Build the final hierarchy: fields -> ads
 	// First, attach fields to their respective ads
 	for (_, mut field) in fields {
@@ -801,11 +844,11 @@ pub async fn get_last_avito_feed(
 			}
 		}
 	}
-	
+
 	// Convert HashMap to Vec and sort by created_ts for consistent ordering
 	let mut ads_vec: Vec<AdResponse> = ads.into_values().collect();
 	ads_vec.sort_by(|a, b| a.created_ts.cmp(&b.created_ts));
-	
+
 	// Sort fields within each ad by created_ts for consistent ordering
 	for ad in &mut ads_vec {
 		ad.fields.sort_by(|a, b| a.created_ts.cmp(&b.created_ts));
@@ -819,7 +862,7 @@ pub async fn get_last_avito_feed(
 		created_ts: latest_feed.created_ts.expect("No created_ts"),
 		ads: ads_vec,
 	};
-	
+
 	Ok(HttpResponse::Ok().json(serde_json::json!({
 		"status": "success",
 		"data": feed_response,
