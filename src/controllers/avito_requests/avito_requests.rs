@@ -2,7 +2,9 @@ use crate::controllers::auth::Role;
 use crate::utils::avito_requests::filter_add_avito_request_record;
 use crate::{
 	jwt_auth::JwtMiddleware,
-	models::{AvitoRequest, Count, FilterOptions, FilteredAvitoRequest, SaveAvitoRequest},
+	models::{
+		AdRecord, AvitoRequest, Count, FilterOptions, FilteredAvitoRequest, SaveAvitoRequest,
+	},
 	AppState,
 };
 use actix_web::{
@@ -18,7 +20,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AvitoRequestMessage {
-	pub id: Uuid,
+	pub request_id: Uuid,
 	pub user_id: Uuid,
 	pub request: String,
 	pub city: String,
@@ -96,7 +98,7 @@ async fn create_avito_request_handler(
 		Ok(avito_request) => {
 			// Create message
 			let message = AvitoRequestMessage {
-				id: avito_request.request_id.clone(),
+				request_id: avito_request.request_id.clone(),
 				user_id: avito_request.user_id.clone(),
 				request: avito_request.request.clone().expect("REASON"),
 				city: avito_request.city.clone().expect("REASON"),
@@ -155,4 +157,84 @@ async fn publish_avito_request(
 		message.user_id
 	);
 	Ok(())
+}
+
+#[get("/avito_requests/{avito_request_id}/ads")]
+#[has_any_role("Role::Admin", type = "Role")]
+async fn get_ads_by_avito_request_id_handler(
+	path: Path<Uuid>,
+	data: web::Data<AppState>,
+	_: JwtMiddleware,
+) -> impl Responder {
+	let avito_request_id = path.into_inner();
+
+	let query = "
+	           SELECT ad_id, my_ad, run_date, city_query, search_query, position, views, views_today,
+	                  promotion, delivery, ad_date, avito_ad_id, title, price, link, categories,
+	                  seller_id, seller_name, seller_type, register_date, answer_time,
+	                  rating, reviews_count, ads_count, closed_ads_count, photo_count,
+	                  address, description, avito_request_id, created_ts
+	           FROM avito_analytics_ads
+	           WHERE avito_request_id = $1
+	           ORDER BY position
+	       ";
+
+	let query_result = sqlx::query_as::<_, AdRecord>(query)
+		.bind(avito_request_id)
+		.fetch_all(&data.db)
+		.await;
+
+	match query_result {
+		Ok(ads) => {
+			let json_response = serde_json::json!({
+				"status": "success",
+				"data": serde_json::json!({
+					"ads": &ads
+				})
+			});
+			HttpResponse::Ok().json(json_response)
+		}
+		Err(e) => HttpResponse::InternalServerError()
+			.json(serde_json::json!({"status": "error","message": format!("{:?}", e)})),
+	}
+}
+
+#[get("/avito_requests")]
+#[has_any_role("Role::Admin", type = "Role")]
+async fn get_all_avito_requests_handler(
+	opts: web::Query<FilterOptions>,
+	data: web::Data<AppState>,
+	_: JwtMiddleware,
+) -> impl Responder {
+	let limit = opts.limit.unwrap_or(10);
+	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+	let table = String::from("avito_requests");
+
+	let query_result = sqlx::query_as!(
+		AvitoRequest,
+		"SELECT * FROM avito_requests ORDER BY created_ts DESC LIMIT $1 OFFSET $2",
+		limit as i64,
+		offset as i64
+	)
+	.fetch_all(&data.db)
+	.await;
+
+	let error_message = "Error fetching avito requests";
+	if query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error", "message": error_message}));
+	}
+
+	let avito_requests = query_result.expect(error_message);
+	let avito_requests_count = Count::count(&data.db, table).await.unwrap_or(0);
+
+	let json_response = json!({
+		"status": "success",
+		"data": json!({
+			"avito_requests": &avito_requests.into_iter().map(|request| filter_add_avito_request_record(&request)).collect::<Vec<FilteredAvitoRequest>>(),
+			"avito_requests_count": &avito_requests_count,
+		})
+	});
+
+	HttpResponse::Ok().json(json_response)
 }

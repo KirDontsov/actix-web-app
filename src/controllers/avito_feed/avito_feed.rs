@@ -1,8 +1,8 @@
 use crate::{
 	jwt_auth::JwtMiddleware,
 	models::{
-		AdResponse, ApiError, FeedQueryParams, FeedResponse,
-		FieldResponse, FieldValueResponse, XmlAd,
+		AdResponse, ApiError, FeedQueryParams, FeedResponse, FieldResponse, FieldValueResponse,
+		XmlAd,
 	},
 	AppState,
 };
@@ -12,7 +12,7 @@ use actix_web::{
 	HttpResponse,
 };
 
-use quick_xml::events::{Event};
+use quick_xml::events::Event;
 use quick_xml::Reader;
 use reqwest::Client;
 use sqlx::Row;

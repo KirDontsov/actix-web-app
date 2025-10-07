@@ -19,6 +19,7 @@ pub mod users;
 pub use self::avito_client::*;
 pub use self::avito_feed::*;
 pub use self::avito_reports::*;
+pub use self::avito_requests::AdRecord;
 pub use self::avito_requests::*;
 pub use self::categories::*;
 pub use self::cities::*;

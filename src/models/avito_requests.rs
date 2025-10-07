@@ -40,4 +40,40 @@ pub struct FilteredAvitoRequest {
 	pub coords: Option<String>,
 	pub radius: Option<String>,
 	pub district: Option<String>,
+	#[serde(rename = "createdTs")]
+	pub created_ts: Option<DateTime<Utc>>,
+}
+
+#[derive(sqlx::FromRow, Debug, Deserialize, Serialize, Clone)]
+pub struct AdRecord {
+	pub ad_id: Option<uuid::Uuid>, // Auto-generated primary key
+	pub my_ad: String,
+	pub run_date: DateTime<Utc>,
+	pub city_query: String,
+	pub search_query: String,
+	pub position: i32,
+	pub views: String,
+	pub views_today: String,
+	pub promotion: String,
+	pub delivery: String,
+	pub ad_date: String,
+	pub avito_ad_id: String,
+	pub title: String,
+	pub price: String,
+	pub link: String,
+	pub categories: String,
+	pub seller_id: String,
+	pub seller_name: String,
+	pub seller_type: String,
+	pub register_date: String,
+	pub answer_time: String,
+	pub rating: String,
+	pub reviews_count: String,
+	pub ads_count: String,
+	pub closed_ads_count: String,
+	pub photo_count: String,
+	pub address: String,
+	pub description: String,
+	pub avito_request_id: uuid::Uuid,
+	pub created_ts: Option<DateTime<Utc>>,
 }

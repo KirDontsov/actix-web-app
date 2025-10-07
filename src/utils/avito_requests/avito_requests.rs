@@ -9,5 +9,6 @@ pub fn filter_add_avito_request_record(avito_request: &AvitoRequest) -> Filtered
 		coords: avito_request.coords.to_owned(),
 		radius: avito_request.radius.to_owned(),
 		district: avito_request.district.to_owned(),
+		created_ts: avito_request.created_ts.to_owned(),
 	}
 }

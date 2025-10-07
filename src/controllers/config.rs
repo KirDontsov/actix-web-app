@@ -94,6 +94,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// avito
 		.service(avito_crawler_handler)
 		.service(get_avito_requests_handler)
+		.service(get_all_avito_requests_handler)
 		.service(get_avito_token_handler)
 		.service(get_avito_items)
 		.service(get_avito_user_profile)
@@ -107,6 +108,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_last_avito_feed)
 		.service(fetch_and_update_avito_ads)
 		.service(create_avito_request_handler)
+		.service(get_ads_by_avito_request_id_handler)
 		.route(
 			"/ws",
 			web::get().to(

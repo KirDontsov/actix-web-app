@@ -23,4 +23,5 @@ pub mod types;
 pub mod user;
 pub mod websocket;
 
+pub use self::avito_requests::*;
 pub use self::config::config;
