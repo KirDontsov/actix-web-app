@@ -109,6 +109,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(fetch_and_update_avito_ads)
 		.service(create_avito_request_handler)
 		.service(get_ads_by_avito_request_id_handler)
+		.service(get_ads_by_avito_request_id_csv_handler)
 		.route(
 			"/ws",
 			web::get().to(

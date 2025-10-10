@@ -17,6 +17,9 @@ use serde_json::json;
 use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
+use csv::Writer;
+use std::io::Cursor;
+use crate::utils::transliterate::Translit;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AvitoRequestMessage {
@@ -30,6 +33,7 @@ pub struct AvitoRequestMessage {
 	pub created_ts: chrono::DateTime<chrono::Utc>,
 }
 
+// Get my account avito requests
 #[get("/avito_requests/{id}")]
 #[has_any_role("Role::Admin", type = "Role")]
 async fn get_avito_requests_handler(
@@ -66,6 +70,7 @@ async fn get_avito_requests_handler(
 	HttpResponse::Ok().json(json_response)
 }
 
+// Create avito request
 #[post("/avito_requests/{id}")]
 #[has_any_role("Role::Admin", type = "Role")]
 async fn create_avito_request_handler(
@@ -159,6 +164,7 @@ async fn publish_avito_request(
 	Ok(())
 }
 
+// GET avito request with ads
 #[get("/avito_requests/{avito_request_id}/ads")]
 #[has_any_role("Role::Admin", type = "Role")]
 async fn get_ads_by_avito_request_id_handler(
@@ -199,6 +205,114 @@ async fn get_ads_by_avito_request_id_handler(
 	}
 }
 
+// GET avito request with ads in a csv file
+#[get("/avito_requests/{avito_request_id}/ads/csv")]
+#[has_any_role("Role::Admin", type = "Role")]
+async fn get_ads_by_avito_request_id_csv_handler(
+	path: Path<Uuid>,
+	data: web::Data<AppState>,
+	_: JwtMiddleware,
+) -> impl Responder {
+	let avito_request_id = path.into_inner();
+
+	let query = "
+	           SELECT ad_id, my_ad, run_date, city_query, search_query, position, views, views_today,
+	                  promotion, delivery, ad_date, avito_ad_id, title, price, link, categories,
+	                  seller_id, seller_name, seller_type, register_date, answer_time,
+	                  rating, reviews_count, ads_count, closed_ads_count, photo_count,
+	                  address, description, avito_request_id, created_ts
+	           FROM avito_analytics_ads
+	           WHERE avito_request_id = $1
+	           ORDER BY position
+	       ";
+
+	let query_result = sqlx::query_as::<_, AdRecord>(query)
+		.bind(avito_request_id)
+		.fetch_all(&data.db)
+		.await;
+
+	match query_result {
+		Ok(ads) => {
+			// Create CSV in memory
+			let mut writer = Writer::from_writer(Cursor::new(Vec::new()));
+
+			// Write headers
+			writer.write_record(&[
+				"Мое", "Дата прогона", "Город (запрос)", "Поиск (запрос)", "Поз.", "Просмотров",
+				"Просмотров сегодня", "Продвижение", "Доставка", "Дата объявления", "id", "Название",
+				"Цена", "Ссылка", "Категории", "id Продавца", "Продавец", "Тип продавца",
+				"Дата регистрации", "Время ответа", "Рейтинг", "Кол. отзывов", "Кол. объявлений",
+				"Кол. закрытых", "Фото", "Адрес", "Описание"
+			]).unwrap();
+
+			// Write records
+			for ad in &ads {
+				writer.write_record(&[
+					ad.my_ad.as_str(),
+					ad.run_date.to_rfc3339().as_str(),
+					ad.city_query.as_str(),
+					ad.search_query.as_str(),
+					ad.position.to_string().as_str(),
+					ad.views.as_str(),
+					ad.views_today.as_str(),
+					ad.promotion.as_str(),
+					ad.delivery.as_str(),
+					ad.ad_date.as_str(),
+					ad.avito_ad_id.as_str(),
+					ad.title.as_str(),
+					ad.price.as_str(),
+					ad.link.as_str(),
+					ad.categories.as_str(),
+					ad.seller_id.as_str(),
+					ad.seller_name.as_str(),
+					ad.seller_type.as_str(),
+					ad.register_date.as_str(),
+					ad.answer_time.as_str(),
+					ad.rating.as_str(),
+					ad.reviews_count.as_str(),
+					ad.ads_count.as_str(),
+					ad.closed_ads_count.as_str(),
+					ad.photo_count.as_str(),
+					ad.address.as_str(),
+					ad.description.as_str(),
+				]).unwrap();
+			}
+
+			// Get the CSV bytes
+			let csv_bytes = writer.into_inner().unwrap().into_inner();
+
+			// Generate filename using search_query and date
+			let filename = if !ads.is_empty() {
+				let first_ad = &ads[0];
+				let search_query = first_ad.search_query.clone();
+				// Replace invalid filename characters with underscores
+				let sanitized_query = search_query
+					.chars()
+					.map(|c| match c {
+						'/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' | '\0' => '_',
+						_ => c,
+					})
+					.collect::<String>();
+				let transliterated_query = Translit::convert(Some(sanitized_query));
+				let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
+				format!("{}_{}.csv", transliterated_query, date)
+			} else {
+				let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
+				format!("ads_{}.csv", date)
+			};
+
+			// Create response with CSV content type
+			HttpResponse::Ok()
+				.content_type("text/csv")
+				.append_header(("Content-Disposition", format!("attachment; filename=\"{}\"", filename)))
+				.body(csv_bytes)
+		}
+		Err(e) => HttpResponse::InternalServerError()
+			.json(serde_json::json!({"status": "error","message": format!("{:?}", e)})),
+	}
+}
+
+// GET all accaunts avito requests
 #[get("/avito_requests")]
 #[has_any_role("Role::Admin", type = "Role")]
 async fn get_all_avito_requests_handler(
