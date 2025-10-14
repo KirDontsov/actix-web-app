@@ -202,8 +202,6 @@ pub async fn get_avito_user_profile(
 	let url = env::var("AVITO_BASE_URL")
 		.map_err(|_| ApiError::Other("AVITO_BASE_URL not set".to_string()))?;
 
-	dbg!(&avito_token);
-
 	// Build headers
 	let mut headers = header::HeaderMap::new();
 	headers.insert(
@@ -234,7 +232,7 @@ pub async fn get_avito_user_profile(
 
 	// Parse response
 	let response_text = response.text().await?;
-	dbg!(&response_text);
+
 	let profile_data: AvitoUserProfileResponse = serde_json::from_str(&response_text)
 		.map_err(|e| ApiError::JsonParseError(e, response_text.clone()))?;
 
@@ -451,7 +449,7 @@ pub async fn get_avito_category_fields(
 		.danger_accept_invalid_certs(true)
 		.build()?
 		.get(&api_url)
-		.headers(headers)
+		.headers(headers.clone())
 		.send()
 		.await?;
 
@@ -464,8 +462,126 @@ pub async fn get_avito_category_fields(
 
 	// Parse response
 	let response_text = response.text().await?;
-	let node_fields_data: serde_json::Value = serde_json::from_str(&response_text)
+	let mut node_fields_data: serde_json::Value = serde_json::from_str(&response_text)
 		.map_err(|e| ApiError::JsonParseError(e, response_text.clone()))?;
+
+
+	// Process the response to fetch additional data from values_link_json and values_link_xml
+	if let Some(fields_array) = node_fields_data.get_mut("fields").and_then(|f| f.as_array_mut()) {
+		for field in fields_array.iter_mut() {
+			// Process content array of the main field
+			if let Some(content_array) = field.get_mut("content").and_then(|c| c.as_array_mut()) {
+				for content_item in content_array.iter_mut() {
+					// Process values_link_json
+					if let Some(values_link_json) = content_item.get("values_link_json").and_then(|v| v.as_str()) {
+						// Make additional request to fetch values from the JSON link
+						let values_response = Client::builder()
+							.danger_accept_invalid_certs(true)
+							.timeout(std::time::Duration::from_secs(5)) // Add 5 second timeout
+							.build()?
+							.get(values_link_json)
+							.headers(headers.clone())
+							.send()
+							.await?;
+
+						if values_response.status().is_success() {
+							let values_text = values_response.text().await?;
+							let values_data: serde_json::Value = serde_json::from_str(&values_text)
+								.map_err(|e| ApiError::JsonParseError(e, values_text.clone()))?;
+
+							// Add the fetched values to the content item as a new "values" field
+							content_item.as_object_mut().unwrap().insert("values".to_string(), values_data);
+						}
+					}
+
+					// Process values_link_xml
+					// if let Some(values_link_xml) = content_item.get("values_link_xml").and_then(|v| v.as_str()) {
+					// 	// Make additional request to fetch values from the XML link
+					// 	let values_response = Client::builder()
+					// 		.danger_accept_invalid_certs(true)
+					// 		.timeout(std::time::Duration::from_secs(5)) // Add 5 second timeout
+					// 		.build()?
+					// 		.get(values_link_xml)
+					// 		.headers(headers.clone())
+					// 		.send()
+					// 		.await?;
+					//
+					// 	if values_response.status().is_success() {
+					// 		let values_text = values_response.text().await?;
+					// 		// Parse XML response to JSON
+					// 		let values_data = parse_xml_to_json(&values_text)?;
+					//
+					// 		// Add the fetched values to the content item as a new "values" field
+					// 		content_item.as_object_mut().unwrap().insert("values".to_string(), values_data);
+					// 	}
+					// }
+
+					// Remove the values_link_json and values_link_xml fields since we've fetched the data
+					// content_item.as_object_mut().unwrap().remove("values_link_json");
+					// content_item.as_object_mut().unwrap().remove("values_link_xml");
+				}
+			}
+
+			// Process children array if it exists
+			if let Some(children_array) = field.get_mut("children").and_then(|c| c.as_array_mut()) {
+				for child in children_array.iter_mut() {
+					// Process content array of each child
+					if let Some(child_content_array) = child.get_mut("content").and_then(|c| c.as_array_mut()) {
+						for child_content_item in child_content_array.iter_mut() {
+							// Process values_link_json in children
+							if let Some(values_link_json) = child_content_item.get("values_link_json").and_then(|v| v.as_str()) {
+								// Make additional request to fetch values from the JSON link
+								let values_response = Client::builder()
+									.danger_accept_invalid_certs(true)
+									.timeout(std::time::Duration::from_secs(5)) // Add 5 second timeout
+									.build()?
+									.get(values_link_json)
+									.headers(headers.clone())
+									.send()
+									.await?;
+
+								if values_response.status().is_success() {
+									let values_text = values_response.text().await?;
+									let values_data: serde_json::Value = serde_json::from_str(&values_text)
+										.map_err(|e| ApiError::JsonParseError(e, values_text.clone()))?;
+
+									// Add the fetched values to the content item as a new "values" field
+									child_content_item.as_object_mut().unwrap().insert("values".to_string(), values_data);
+								}
+							}
+
+
+							// Process values_link_xml in children
+							// if let Some(values_link_xml) = child_content_item.get("values_link_xml").and_then(|v| v.as_str()) {
+							// 	// Make additional request to fetch values from the XML link
+							// 	let values_response = Client::builder()
+							// 		.danger_accept_invalid_certs(true)
+							// 		.timeout(std::time::Duration::from_secs(5)) // Add 5 second timeout
+							// 		.build()?
+							// 		.get(values_link_xml)
+							// 		.headers(headers.clone())
+							// 		.send()
+							// 		.await?;
+							//
+							// 	if values_response.status().is_success() {
+							// 		let values_text = values_response.text().await?;
+							// 		// Parse XML response to JSON
+							// 		let values_data = parse_xml_to_json(&values_text)?;
+							//
+							// 		// Add the fetched values to the content item as a new "values" field
+							// 		child_content_item.as_object_mut().unwrap().insert("values".to_string(), values_data);
+							// 	}
+							// }
+
+							// Remove the values_link_json and values_link_xml fields since we've fetched the data
+							// child_content_item.as_object_mut().unwrap().remove("values_link_json");
+							// child_content_item.as_object_mut().unwrap().remove("values_link_xml");
+						}
+					}
+				}
+			}
+		}
+	}
 
 	Ok(HttpResponse::Ok().json(json!({
 		"status": "success",
