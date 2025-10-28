@@ -42,7 +42,7 @@ pub async fn extract(req: &mut ServiceRequest) -> Result<Vec<Role>, Error> {
 		.await
 		.unwrap();
 
-	if &user.role != "admin" {
+	if user.role.as_deref() != Some("admin") {
 		Ok(vec![Role::Manager])
 	} else {
 		Ok(vec![Role::Admin])

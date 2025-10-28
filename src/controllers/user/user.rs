@@ -95,15 +95,23 @@ async fn update_user_handler(
 	let verified = &opts.verified;
 	let favourite = &opts.favourite;
 	// let updated_at = Utc::now();
+	
+	// Create longer-lived values to avoid temporary value issues
+	let name_value = name.as_deref().unwrap_or_default();
+	let email_value = email.as_deref().unwrap_or_default();
+	let role_value = role.as_deref().unwrap_or_default();
+	let verified_value = verified.unwrap_or_default();
+	let empty_vec = Vec::new();
+	let favourite_value = favourite.as_ref().unwrap_or(&empty_vec);
 
 	let user = sqlx::query_as!(
 		User,
 		r#"UPDATE users SET name = $1, email = $2, role = $3, verified = $4, favourite = $5 WHERE id = $6 RETURNING *"#,
-		name.to_string(),
-		email.to_string(),
-		role.to_string(),
-		verified,
-		favourite,
+		name_value,
+	email_value,
+		role_value,
+	verified_value,
+	favourite_value,
 		// updated_at,
 		id
 	)

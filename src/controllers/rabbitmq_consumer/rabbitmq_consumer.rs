@@ -20,7 +20,10 @@ impl RabbitMQConsumer {
 		let queue = rabbitmq_channel
 			.queue_declare(
 				queue_name,
-				QueueDeclareOptions::default(),
+				QueueDeclareOptions {
+					durable: true,
+					..QueueDeclareOptions::default()
+				},
 				FieldTable::default(),
 			)
 			.await?;

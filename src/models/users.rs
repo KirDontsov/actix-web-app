@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct User {
 	pub id: uuid::Uuid,
-	pub name: String,
-	pub email: String,
-	pub password: String,
-	pub role: String,
-	pub photo: String,
-	pub verified: bool,
+	pub name: Option<String>,
+	pub email: Option<String>,
+	pub password: Option<String>,
+	pub role: Option<String>,
+	pub photo: Option<String>,
+	pub verified: Option<bool>,
 	pub favourite: Option<Vec<String>>,
 	#[serde(rename = "createdAt")]
 	pub created_at: Option<DateTime<Utc>>,
@@ -41,11 +41,11 @@ pub struct LoginUserSchema {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateUserSchema {
-	pub name: String,
-	pub email: String,
-	pub role: String,
-	pub verified: bool,
-	pub favourite: Vec<String>,
+	pub name: Option<String>,
+	pub email: Option<String>,
+	pub role: Option<String>,
+	pub verified: Option<bool>,
+	pub favourite: Option<Vec<String>>,
 	// #[serde(rename = "updatedAt")]
 	// pub updated_at: String,
 }

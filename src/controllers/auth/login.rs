@@ -25,10 +25,14 @@ async fn login_handler(
 		.unwrap();
 
 	let is_valid = query_result.to_owned().map_or(false, |user| {
-		let parsed_hash = PasswordHash::new(&user.password).unwrap();
-		Argon2::default()
-			.verify_password(body.password.as_bytes(), &parsed_hash)
-			.map_or(false, |_| true)
+		if let Some(password) = &user.password {
+			let parsed_hash = PasswordHash::new(password).unwrap();
+			Argon2::default()
+				.verify_password(body.password.as_bytes(), &parsed_hash)
+				.map_or(false, |_| true)
+		} else {
+			false
+		}
 	});
 
 	if !is_valid {
@@ -44,7 +48,7 @@ async fn login_handler(
 	let exp = (now + Duration::minutes(60)).timestamp() as usize;
 	let claims: TokenClaims = TokenClaims {
 		sub: user.id.to_string(),
-		role: user.role.to_string(),
+		role: user.role.clone().unwrap_or_default(),
 		exp,
 		iat,
 	};
