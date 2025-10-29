@@ -184,10 +184,13 @@ async fn publish_avito_request(
 #[has_any_role("Role::Admin", type = "Role")]
 async fn get_ads_by_avito_request_id_handler(
 	path: Path<Uuid>,
+	opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
 	_: JwtMiddleware,
 ) -> impl Responder {
 	let avito_request_id = path.into_inner();
+	let limit = opts.limit.unwrap_or(20);
+	let offset = (opts.page.unwrap_or(1) - 1) * limit;
 
 	let query = "
 	           SELECT ad_id, my_ad, run_date, city_query, search_query, position, views, views_today,
@@ -198,19 +201,30 @@ async fn get_ads_by_avito_request_id_handler(
 	           FROM avito_analytics_ads
 	           WHERE avito_request_id = $1
 	           ORDER BY position
+	           LIMIT $2 OFFSET $3
 	       ";
 
 	let query_result = sqlx::query_as::<_, AdRecord>(query)
 		.bind(avito_request_id)
+		.bind(limit as i64)
+		.bind(offset as i64)
 		.fetch_all(&data.db)
 		.await;
 
 	match query_result {
 		Ok(ads) => {
+			// Get total count of ads for this request
+			let ads_count = sqlx::query_scalar!("SELECT COUNT(*) FROM avito_analytics_ads WHERE avito_request_id = $1", avito_request_id)
+				.fetch_one(&data.db)
+				.await
+				.unwrap_or(Some(0i64))
+				.unwrap_or(0i64);
+
 			let json_response = serde_json::json!({
 				"status": "success",
-				"data": serde_json::json!({
-					"ads": &ads
+				"data": json!({
+					"ads": &ads,
+					"ads_count": &ads_count
 				})
 			});
 			HttpResponse::Ok().json(json_response)
