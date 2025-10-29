@@ -189,7 +189,7 @@ async fn get_ads_by_avito_request_id_handler(
 	_: JwtMiddleware,
 ) -> impl Responder {
 	let avito_request_id = path.into_inner();
-	let limit = opts.limit.unwrap_or(20);
+	let limit = opts.limit.unwrap_or(10);
 	let offset = (opts.page.unwrap_or(1) - 1) * limit;
 
 	let query = "
