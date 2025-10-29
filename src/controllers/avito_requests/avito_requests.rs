@@ -147,10 +147,24 @@ async fn publish_avito_request(
 ) -> Result<(), Box<dyn std::error::Error>> {
 	let message_json = serde_json::to_string(message)?;
 
+	// Declare exchange
+	channel
+		.exchange_declare(
+			"avito_exchange",
+			lapin::ExchangeKind::Topic,
+			lapin::options::ExchangeDeclareOptions {
+				durable: true,
+				..lapin::options::ExchangeDeclareOptions::default()
+			},
+			lapin::types::FieldTable::default(),
+		)
+		.await?;
+
+	// Publish to exchange with routing key including user_id
 	channel
 		.basic_publish(
-			"",
-			"avito_requests",
+			"avito_exchange", // exchange name
+			&format!("task.crawl.{}", message.user_id), // routing key for crawl tasks
 			lapin::options::BasicPublishOptions::default(),
 			message_json.as_bytes(),
 			lapin::BasicProperties::default(),
@@ -158,7 +172,8 @@ async fn publish_avito_request(
 		.await?;
 
 	log::info!(
-		"Published Avito request message for user: {}",
+		"Published Avito request message for user: {} with routing key: task.crawl.{}",
+		message.user_id,
 		message.user_id
 	);
 	Ok(())
@@ -345,6 +360,59 @@ async fn get_all_avito_requests_handler(
 	let json_response = json!({
 		"status": "success",
 		"data": json!({
+			"avito_requests": &avito_requests.into_iter().map(|request| filter_add_avito_request_record(&request)).collect::<Vec<FilteredAvitoRequest>>(),
+			"avito_requests_count": &avito_requests_count,
+		})
+	});
+
+	HttpResponse::Ok().json(json_response)
+}
+
+// GET all avito requests by specific user_id
+#[get("/avito_requests/user/{user_id}")]
+async fn get_avito_requests_by_user_handler(
+	opts: web::Query<FilterOptions>,
+	path: Path<Uuid>,
+	data: web::Data<AppState>,
+	user: JwtMiddleware,
+) -> impl Responder {
+	let requested_user_id = path.into_inner();
+	let current_user_id = user.user_id; // Get the authenticated user's ID
+	let limit = opts.limit.unwrap_or(20);
+	let offset = (opts.page.unwrap_or(1) - 1) * limit;
+
+	// Check if the requested user_id matches the authenticated user's ID
+	if requested_user_id != current_user_id {
+		return HttpResponse::Forbidden()
+			.json(json!({"status": "error", "message": "Access denied. You can only access your own avito requests."}));
+	}
+
+	let query_result = sqlx::query_as!(
+	AvitoRequest,
+		"SELECT * FROM avito_requests WHERE user_id = $1 ORDER BY created_ts DESC LIMIT $2 OFFSET $3",
+		requested_user_id,
+		limit as i64,
+		offset as i64
+	)
+	.fetch_all(&data.db)
+	.await;
+
+	let error_message = "Error fetching avito requests for user";
+	if query_result.is_err() {
+		return HttpResponse::InternalServerError()
+			.json(json!({"status": "error", "message": error_message}));
+	}
+
+	let avito_requests = query_result.expect(error_message);
+	let avito_requests_count = sqlx::query_scalar!("SELECT COUNT(*) FROM avito_requests WHERE user_id = $1", requested_user_id)
+		.fetch_one(&data.db)
+		.await
+		.unwrap_or(Some(0i64))
+		.unwrap_or(0i64);
+
+	let json_response = json!({
+		"status": "success",
+	"data": json!({
 			"avito_requests": &avito_requests.into_iter().map(|request| filter_add_avito_request_record(&request)).collect::<Vec<FilteredAvitoRequest>>(),
 			"avito_requests_count": &avito_requests_count,
 		})

@@ -95,6 +95,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(avito_crawler_handler)
 		.service(get_avito_requests_handler)
 		.service(get_all_avito_requests_handler)
+		.service(get_avito_requests_by_user_handler)
 		.service(get_avito_token_handler)
 		.service(get_avito_items)
 		.service(get_avito_user_profile)
