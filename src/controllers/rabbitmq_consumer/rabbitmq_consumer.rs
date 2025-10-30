@@ -79,11 +79,20 @@ impl RabbitMQConsumer {
 					let message_data = String::from_utf8_lossy(&delivery.data).to_string();
 					println!("Received message: {}", message_data);
 
-					// Parse the message as JSON to extract user_id if present
+					// Parse the message as JSON to extract user_id and request_id if present
 					match serde_json::from_str::<Value>(&message_data) {
 						Ok(json_value) => {
+							// Check if the message contains request_id for targeted delivery
+							if let Some(request_id) = extract_request_id_from_message(&json_value) {
+								// Send the message to specific request's WebSocket connections
+								let msg_str = json_value.to_string();
+								let connections = websocket_connections_clone.clone();
+
+								tokio::spawn(async move {
+									connections.broadcast_message_to_request(&request_id, &msg_str).await;
+								});
 							// Check if the message contains user_id for targeted delivery
-							if let Some(user_id) = extract_user_id_from_message(&json_value) {
+							} else if let Some(user_id) = extract_user_id_from_message(&json_value) {
 								// Send the message to specific user's WebSocket connections
 								let msg_str = json_value.to_string();
 								let connections = websocket_connections_clone.clone();
@@ -92,7 +101,7 @@ impl RabbitMQConsumer {
 									connections.broadcast_message_to_user(&user_id, &msg_str).await;
 								});
 							} else {
-								// Send to all WebSocket connections if no user_id found
+								// Send to all WebSocket connections if no request_id or user_id found
 								let msg_str = json_value.to_string();
 								let connections = websocket_connections_clone.clone();
 
@@ -143,6 +152,20 @@ fn extract_user_id_from_message(json_value: &Value) -> Option<String> {
 				if let Some(user_id_str) = user_id_val.as_str() {
 					return Some(user_id_str.to_string());
 				}
+			}
+		}
+	}
+	None
+}
+
+// Helper function to extract request_id from message
+fn extract_request_id_from_message(json_value: &Value) -> Option<String> {
+	// First try to get request_id directly from the root object
+	if let Some(obj) = json_value.as_object() {
+		// Try direct request_id field
+		if let Some(request_id_val) = obj.get("request_id") {
+			if let Some(request_id_str) = request_id_val.as_str() {
+				return Some(request_id_str.to_string());
 			}
 		}
 	}
