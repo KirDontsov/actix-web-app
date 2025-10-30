@@ -54,7 +54,10 @@ impl RabbitMQConsumer {
 			)
 			.await?;
 
-		println!("Declared queue: {} and bound to exchange with pattern: progress.*", queue.name());
+		println!(
+			"Declared queue: {} and bound to exchange with pattern: progress.*",
+			queue.name()
+		);
 
 		// Start consuming messages
 		let consumer = rabbitmq_channel
@@ -89,16 +92,21 @@ impl RabbitMQConsumer {
 								let connections = websocket_connections_clone.clone();
 
 								tokio::spawn(async move {
-									connections.broadcast_message_to_request(&request_id, &msg_str).await;
+									connections
+										.broadcast_message_to_request(&request_id, &msg_str)
+										.await;
 								});
 							// Check if the message contains user_id for targeted delivery
-							} else if let Some(user_id) = extract_user_id_from_message(&json_value) {
+							} else if let Some(user_id) = extract_user_id_from_message(&json_value)
+							{
 								// Send the message to specific user's WebSocket connections
 								let msg_str = json_value.to_string();
 								let connections = websocket_connections_clone.clone();
 
 								tokio::spawn(async move {
-									connections.broadcast_message_to_user(&user_id, &msg_str).await;
+									connections
+										.broadcast_message_to_user(&user_id, &msg_str)
+										.await;
 								});
 							} else {
 								// Send to all WebSocket connections if no request_id or user_id found

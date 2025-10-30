@@ -19,7 +19,7 @@ use serde_json::json;
 use std::env;
 
 use reqwest::{
-	header::{self, HeaderMap, HeaderName, HeaderValue},
+	header::{self, HeaderMap, HeaderValue},
 	Client,
 };
 
@@ -465,15 +465,20 @@ pub async fn get_avito_category_fields(
 	let mut node_fields_data: serde_json::Value = serde_json::from_str(&response_text)
 		.map_err(|e| ApiError::JsonParseError(e, response_text.clone()))?;
 
-
 	// Process the response to fetch additional data from values_link_json and values_link_xml
-	if let Some(fields_array) = node_fields_data.get_mut("fields").and_then(|f| f.as_array_mut()) {
+	if let Some(fields_array) = node_fields_data
+		.get_mut("fields")
+		.and_then(|f| f.as_array_mut())
+	{
 		for field in fields_array.iter_mut() {
 			// Process content array of the main field
 			if let Some(content_array) = field.get_mut("content").and_then(|c| c.as_array_mut()) {
 				for content_item in content_array.iter_mut() {
 					// Process values_link_json
-					if let Some(values_link_json) = content_item.get("values_link_json").and_then(|v| v.as_str()) {
+					if let Some(values_link_json) = content_item
+						.get("values_link_json")
+						.and_then(|v| v.as_str())
+					{
 						// Make additional request to fetch values from the JSON link
 						let values_response = Client::builder()
 							.danger_accept_invalid_certs(true)
@@ -490,7 +495,10 @@ pub async fn get_avito_category_fields(
 								.map_err(|e| ApiError::JsonParseError(e, values_text.clone()))?;
 
 							// Add the fetched values to the content item as a new "values" field
-							content_item.as_object_mut().unwrap().insert("values".to_string(), values_data);
+							content_item
+								.as_object_mut()
+								.unwrap()
+								.insert("values".to_string(), values_data);
 						}
 					}
 
@@ -526,10 +534,15 @@ pub async fn get_avito_category_fields(
 			if let Some(children_array) = field.get_mut("children").and_then(|c| c.as_array_mut()) {
 				for child in children_array.iter_mut() {
 					// Process content array of each child
-					if let Some(child_content_array) = child.get_mut("content").and_then(|c| c.as_array_mut()) {
+					if let Some(child_content_array) =
+						child.get_mut("content").and_then(|c| c.as_array_mut())
+					{
 						for child_content_item in child_content_array.iter_mut() {
 							// Process values_link_json in children
-							if let Some(values_link_json) = child_content_item.get("values_link_json").and_then(|v| v.as_str()) {
+							if let Some(values_link_json) = child_content_item
+								.get("values_link_json")
+								.and_then(|v| v.as_str())
+							{
 								// Make additional request to fetch values from the JSON link
 								let values_response = Client::builder()
 									.danger_accept_invalid_certs(true)
@@ -542,14 +555,18 @@ pub async fn get_avito_category_fields(
 
 								if values_response.status().is_success() {
 									let values_text = values_response.text().await?;
-									let values_data: serde_json::Value = serde_json::from_str(&values_text)
-										.map_err(|e| ApiError::JsonParseError(e, values_text.clone()))?;
+									let values_data: serde_json::Value =
+										serde_json::from_str(&values_text).map_err(|e| {
+											ApiError::JsonParseError(e, values_text.clone())
+										})?;
 
 									// Add the fetched values to the content item as a new "values" field
-									child_content_item.as_object_mut().unwrap().insert("values".to_string(), values_data);
+									child_content_item
+										.as_object_mut()
+										.unwrap()
+										.insert("values".to_string(), values_data);
 								}
 							}
-
 
 							// Process values_link_xml in children
 							// if let Some(values_link_xml) = child_content_item.get("values_link_xml").and_then(|v| v.as_str()) {

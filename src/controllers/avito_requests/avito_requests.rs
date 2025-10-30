@@ -16,10 +16,10 @@ use actix_web_grants::proc_macro::has_any_role;
 use serde_json::json;
 use uuid::Uuid;
 
-use serde::{Deserialize, Serialize};
-use csv::Writer;
-use std::io::Cursor;
 use crate::utils::transliterate::Translit;
+use csv::Writer;
+use serde::{Deserialize, Serialize};
+use std::io::Cursor;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AvitoRequestMessage {
@@ -163,7 +163,7 @@ async fn publish_avito_request(
 	// Publish to exchange with routing key including user_id
 	channel
 		.basic_publish(
-			"avito_exchange", // exchange name
+			"avito_exchange",                           // exchange name
 			&format!("task.crawl.{}", message.user_id), // routing key for crawl tasks
 			lapin::options::BasicPublishOptions::default(),
 			message_json.as_bytes(),
@@ -214,11 +214,14 @@ async fn get_ads_by_avito_request_id_handler(
 	match query_result {
 		Ok(ads) => {
 			// Get total count of ads for this request
-			let ads_count = sqlx::query_scalar!("SELECT COUNT(*) FROM avito_analytics_ads WHERE avito_request_id = $1", avito_request_id)
-				.fetch_one(&data.db)
-				.await
-				.unwrap_or(Some(0i64))
-				.unwrap_or(0i64);
+			let ads_count = sqlx::query_scalar!(
+				"SELECT COUNT(*) FROM avito_analytics_ads WHERE avito_request_id = $1",
+				avito_request_id
+			)
+			.fetch_one(&data.db)
+			.await
+			.unwrap_or(Some(0i64))
+			.unwrap_or(0i64);
 
 			let json_response = serde_json::json!({
 				"status": "success",
@@ -266,45 +269,71 @@ async fn get_ads_by_avito_request_id_csv_handler(
 			let mut writer = Writer::from_writer(Cursor::new(Vec::new()));
 
 			// Write headers
-			writer.write_record(&[
-				"Мое", "Дата прогона", "Город (запрос)", "Поиск (запрос)", "Поз.", "Просмотров",
-				"Просмотров сегодня", "Продвижение", "Доставка", "Дата объявления", "id", "Название",
-				"Цена", "Ссылка", "Категории", "id Продавца", "Продавец", "Тип продавца",
-				"Дата регистрации", "Время ответа", "Рейтинг", "Кол. отзывов", "Кол. объявлений",
-				"Кол. закрытых", "Фото", "Адрес", "Описание"
-			]).unwrap();
+			writer
+				.write_record(&[
+					"Мое",
+					"Дата прогона",
+					"Город (запрос)",
+					"Поиск (запрос)",
+					"Поз.",
+					"Просмотров",
+					"Просмотров сегодня",
+					"Продвижение",
+					"Доставка",
+					"Дата объявления",
+					"id",
+					"Название",
+					"Цена",
+					"Ссылка",
+					"Категории",
+					"id Продавца",
+					"Продавец",
+					"Тип продавца",
+					"Дата регистрации",
+					"Время ответа",
+					"Рейтинг",
+					"Кол. отзывов",
+					"Кол. объявлений",
+					"Кол. закрытых",
+					"Фото",
+					"Адрес",
+					"Описание",
+				])
+				.unwrap();
 
 			// Write records
 			for ad in &ads {
-				writer.write_record(&[
-					ad.my_ad.as_str(),
-					ad.run_date.to_rfc3339().as_str(),
-					ad.city_query.as_str(),
-					ad.search_query.as_str(),
-					ad.position.to_string().as_str(),
-					ad.views.as_str(),
-					ad.views_today.as_str(),
-					ad.promotion.as_str(),
-					ad.delivery.as_str(),
-					ad.ad_date.as_str(),
-					ad.avito_ad_id.as_str(),
-					ad.title.as_str(),
-					ad.price.as_str(),
-					ad.link.as_str(),
-					ad.categories.as_str(),
-					ad.seller_id.as_str(),
-					ad.seller_name.as_str(),
-					ad.seller_type.as_str(),
-					ad.register_date.as_str(),
-					ad.answer_time.as_str(),
-					ad.rating.as_str(),
-					ad.reviews_count.as_str(),
-					ad.ads_count.as_str(),
-					ad.closed_ads_count.as_str(),
-					ad.photo_count.as_str(),
-					ad.address.as_str(),
-					ad.description.as_str(),
-				]).unwrap();
+				writer
+					.write_record(&[
+						ad.my_ad.as_str(),
+						ad.run_date.to_rfc3339().as_str(),
+						ad.city_query.as_str(),
+						ad.search_query.as_str(),
+						ad.position.to_string().as_str(),
+						ad.views.as_str(),
+						ad.views_today.as_str(),
+						ad.promotion.as_str(),
+						ad.delivery.as_str(),
+						ad.ad_date.as_str(),
+						ad.avito_ad_id.as_str(),
+						ad.title.as_str(),
+						ad.price.as_str(),
+						ad.link.as_str(),
+						ad.categories.as_str(),
+						ad.seller_id.as_str(),
+						ad.seller_name.as_str(),
+						ad.seller_type.as_str(),
+						ad.register_date.as_str(),
+						ad.answer_time.as_str(),
+						ad.rating.as_str(),
+						ad.reviews_count.as_str(),
+						ad.ads_count.as_str(),
+						ad.closed_ads_count.as_str(),
+						ad.photo_count.as_str(),
+						ad.address.as_str(),
+						ad.description.as_str(),
+					])
+					.unwrap();
 			}
 
 			// Get the CSV bytes
@@ -333,7 +362,10 @@ async fn get_ads_by_avito_request_id_csv_handler(
 			// Create response with CSV content type
 			HttpResponse::Ok()
 				.content_type("text/csv")
-				.append_header(("Content-Disposition", format!("attachment; filename=\"{}\"", filename)))
+				.append_header((
+					"Content-Disposition",
+					format!("attachment; filename=\"{}\"", filename),
+				))
 				.body(csv_bytes)
 		}
 		Err(e) => HttpResponse::InternalServerError()
@@ -418,11 +450,14 @@ async fn get_avito_requests_by_user_handler(
 	}
 
 	let avito_requests = query_result.expect(error_message);
-	let avito_requests_count = sqlx::query_scalar!("SELECT COUNT(*) FROM avito_requests WHERE user_id = $1", requested_user_id)
-		.fetch_one(&data.db)
-		.await
-		.unwrap_or(Some(0i64))
-		.unwrap_or(0i64);
+	let avito_requests_count = sqlx::query_scalar!(
+		"SELECT COUNT(*) FROM avito_requests WHERE user_id = $1",
+		requested_user_id
+	)
+	.fetch_one(&data.db)
+	.await
+	.unwrap_or(Some(0i64))
+	.unwrap_or(0i64);
 
 	let json_response = json!({
 		"status": "success",

@@ -95,7 +95,7 @@ async fn update_user_handler(
 	let verified = &opts.verified;
 	let favourite = &opts.favourite;
 	// let updated_at = Utc::now();
-	
+
 	// Create longer-lived values to avoid temporary value issues
 	let name_value = name.as_deref().unwrap_or_default();
 	let email_value = email.as_deref().unwrap_or_default();

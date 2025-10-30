@@ -4,8 +4,8 @@ use futures::StreamExt;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
-use uuid;
 use url::form_urlencoded;
+use uuid;
 
 // Define a struct to hold WebSocket connections
 #[derive(Clone)]
@@ -24,33 +24,44 @@ impl WebSocketConnections {
 		}
 	}
 
-	pub async fn add_connection(&self, id: String, user_id: String, sender: mpsc::UnboundedSender<String>) {
+	pub async fn add_connection(
+		&self,
+		id: String,
+		user_id: String,
+		sender: mpsc::UnboundedSender<String>,
+	) {
 		let mut connections = self.connections.write().await;
 		connections.insert(id.clone(), sender);
-		
+
 		// Also register this connection with the user
 		let mut user_connections = self.user_connections.write().await;
-		user_connections.entry(user_id).or_insert_with(Vec::new).push(id.clone());
+		user_connections
+			.entry(user_id)
+			.or_insert_with(Vec::new)
+			.push(id.clone());
 	}
-	
+
 	pub async fn add_request_connection(&self, id: String, request_id: String) {
 		// Register this connection with the request_id
 		let mut request_connections = self.request_connections.write().await;
-		request_connections.entry(request_id).or_insert_with(Vec::new).push(id);
+		request_connections
+			.entry(request_id)
+			.or_insert_with(Vec::new)
+			.push(id);
 	}
 
 	pub async fn remove_connection(&self, id: &str) {
 		let mut connections = self.connections.write().await;
 		connections.remove(id);
-		
+
 		// Remove from user connections as well
 		let mut user_connections = self.user_connections.write().await;
 		for (_, user_connection_ids) in user_connections.iter_mut() {
 			user_connection_ids.retain(|conn_id| conn_id != id);
 		}
-		
+
 		// Remove from request connections as well
-	let mut request_connections = self.request_connections.write().await;
+		let mut request_connections = self.request_connections.write().await;
 		for (_, request_connection_ids) in request_connections.iter_mut() {
 			request_connection_ids.retain(|conn_id| conn_id != id);
 		}
@@ -74,7 +85,7 @@ impl WebSocketConnections {
 			}
 		}
 	}
-	
+
 	pub async fn broadcast_message_to_request(&self, request_id: &str, message: &str) {
 		let request_connections = self.request_connections.read().await;
 		if let Some(connection_ids) = request_connections.get(request_id) {
@@ -115,7 +126,9 @@ pub async fn websocket_handler(
 	let (tx, mut rx) = mpsc::unbounded_channel::<String>();
 
 	// Add the connection to the global connections map with user_id
-	connections.add_connection(id.clone(), user_id.clone(), tx).await;
+	connections
+		.add_connection(id.clone(), user_id.clone(), tx)
+		.await;
 
 	// If request_id is provided, register this connection with the request_id
 	if let Some(req_id) = request_id {
@@ -188,8 +201,8 @@ async fn extract_user_id_from_request(req: &HttpRequest) -> Option<String> {
 	if let Some(query) = req.uri().query() {
 		let params: std::collections::HashMap<String, String> =
 			form_urlencoded::parse(query.as_bytes())
-			.into_owned()
-			.collect();
+				.into_owned()
+				.collect();
 		return params.get("user_id").cloned();
 	}
 	None
@@ -200,8 +213,8 @@ async fn extract_request_id_from_request(req: &HttpRequest) -> Option<String> {
 	if let Some(query) = req.uri().query() {
 		let params: std::collections::HashMap<String, String> =
 			form_urlencoded::parse(query.as_bytes())
-			.into_owned()
-			.collect();
+				.into_owned()
+				.collect();
 		return params.get("request_id").cloned();
 	}
 	None
