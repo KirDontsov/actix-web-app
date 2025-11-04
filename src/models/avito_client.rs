@@ -242,6 +242,7 @@ pub enum ApiError {
 	ReqwestError(reqwest::Error),
 	AvitoApiError(u16, String),
 	JsonParseError(serde_json::Error, String),
+	DatabaseError(sqlx::Error),
 	Other(String),
 }
 
@@ -255,6 +256,7 @@ impl fmt::Display for ApiError {
 			ApiError::JsonParseError(e, text) => {
 				write!(f, "JSON parse error: {} - Response text: {}", e, text)
 			}
+			ApiError::DatabaseError(e) => write!(f, "Database error: {}", e),
 			ApiError::Other(e) => write!(f, "Other error: {}", e),
 		}
 	}
@@ -291,11 +293,22 @@ impl actix_web::error::ResponseError for ApiError {
 				"status": "error",
 				"message": "Failed to parse API response"
 			})),
+			ApiError::DatabaseError(_) => HttpResponse::InternalServerError().json(json!({
+				"status": "error",
+				"message": "Database error occurred"
+			})),
 			ApiError::Other(_) => HttpResponse::InternalServerError().json(json!({
 				"status": "error",
 				"message": "An unexpected error occurred"
 			})),
 		}
+	}
+}
+
+// Implement From trait for sqlx::Error
+impl From<sqlx::Error> for ApiError {
+	fn from(err: sqlx::Error) -> ApiError {
+		ApiError::DatabaseError(err)
 	}
 }
 
@@ -310,4 +323,10 @@ impl From<serde_json::Error> for ApiError {
 	fn from(err: serde_json::Error) -> ApiError {
 		ApiError::JsonParseError(err, String::new())
 	}
+}
+
+#[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
+pub struct AvitoCarMark {
+	pub car_mark_id: uuid::Uuid,
+	pub value: String,
 }

@@ -50,18 +50,26 @@ async fn main() -> std::io::Result<()> {
 	};
 
 	// Connect to RabbitMQ
-	let addr = "amqp://guest:guest@localhost:5672";
-	let conn = match lapin::Connection::connect(addr, lapin::ConnectionProperties::default()).await
-	{
-		Ok(pool) => {
-			println!("✅ Connection to the RabbitMQ is successful!");
-			pool
-		}
-		Err(err) => {
-			println!("🔥 Failed to connect to the RabbitMQ: {:?}", err);
-			std::process::exit(1);
-		}
-	};
+	let addr = format!(
+		"amqp://{}:{}@{}:{}",
+		config.rabbitmq_username,
+		config.rabbitmq_password,
+		config.rabbitmq_host,
+		config.rabbitmq_port
+	);
+	let conn =
+		match lapin::Connection::connect(addr.as_str(), lapin::ConnectionProperties::default())
+			.await
+		{
+			Ok(pool) => {
+				println!("✅ Connection to the RabbitMQ is successful!");
+				pool
+			}
+			Err(err) => {
+				println!("🔥 Failed to connect to the RabbitMQ: {:?}", err);
+				std::process::exit(1);
+			}
+		};
 	let channel = match conn.create_channel().await {
 		Ok(pool) => {
 			println!("✅ RabbitMQ Channel established successfuly!");

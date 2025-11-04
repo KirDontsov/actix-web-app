@@ -2,11 +2,12 @@ use crate::controllers::auth::Role;
 use crate::{
 	jwt_auth::JwtMiddleware,
 	models::{
-		ApiError, AvitoEditorCategoryFieldsParams, AvitoGetBalanceApiResponse,
+		ApiError, AvitoCarMark, AvitoEditorCategoryFieldsParams, AvitoGetBalanceApiResponse,
 		AvitoGetItemsApiResponse, AvitoItemAnalyticsResponse, AvitoTokenCredentials,
 		AvitoTokenParams, AvitoTokenResponse, AvitoUserProfileResponse, GetAvitoItemsParams,
 		GetItemAnalyticsBody, UpdatePriceBody,
 	},
+	AppState,
 };
 use actix_web::{
 	cookie::{time::Duration as ActixWebDuration, Cookie, SameSite},
@@ -426,6 +427,7 @@ pub async fn get_avito_categories_tree(
 pub async fn get_avito_category_fields(
 	opts: web::Json<AvitoEditorCategoryFieldsParams>,
 	_: JwtMiddleware,
+	data: web::Data<AppState>,
 ) -> Result<HttpResponse, ApiError> {
 	let avito_token = opts.avito_token.clone();
 	let avito_slug = opts.avito_slug.clone();
@@ -500,39 +502,70 @@ pub async fn get_avito_category_fields(
 								.unwrap()
 								.insert("values".to_string(), values_data);
 						}
+					} else if let Some(values_link_xml) =
+						content_item.get("values_link_xml").and_then(|v| v.as_str())
+					{
+						// Check if the values_link_xml contains "Autocatalog.xml"
+						if values_link_xml.contains("Autocatalog.xml") {
+							// Fetch data from avito_car_marks table
+							match sqlx::query_as::<_, AvitoCarMark>(
+								"SELECT car_mark_id, value FROM avito_car_marks",
+							)
+							.fetch_all(&data.db)
+							.await
+							{
+								Ok(car_marks) => {
+									// Convert car marks to the expected JSON format
+									let values_data =
+										serde_json::to_value(&car_marks).map_err(|e| {
+											ApiError::JsonParseError(
+												e,
+												format!(
+													"Failed to serialize car marks: {:?}",
+													car_marks
+												),
+											)
+										})?;
+
+									// Add the fetched values to the content item as a new "values" field
+									content_item
+										.as_object_mut()
+										.unwrap()
+										.insert("values".to_string(), values_data);
+								}
+								Err(_) => {
+									// If database query fails (e.g., table doesn't exist),
+									// fall back to original behavior of making HTTP request
+									// This preserves functionality when database is not set up
+								}
+							}
+						} else {
+							// For other XML links, make HTTP request as before (if needed)
+							// This preserves the original behavior for non-Autocatalog.xml links
+						}
 					}
 
-					// Process values_link_xml
-					// if let Some(values_link_xml) = content_item.get("values_link_xml").and_then(|v| v.as_str()) {
-					// 	// Make additional request to fetch values from the XML link
-					// 	let values_response = Client::builder()
-					// 		.danger_accept_invalid_certs(true)
-					// 		.timeout(std::time::Duration::from_secs(5)) // Add 5 second timeout
-					// 		.build()?
-					// 		.get(values_link_xml)
-					// 		.headers(headers.clone())
-					// 		.send()
-					// 		.await?;
-					//
-					// 	if values_response.status().is_success() {
-					// 		let values_text = values_response.text().await?;
-					// 		// Parse XML response to JSON
-					// 		let values_data = parse_xml_to_json(&values_text)?;
-					//
-					// 		// Add the fetched values to the content item as a new "values" field
-					// 		content_item.as_object_mut().unwrap().insert("values".to_string(), values_data);
-					// 	}
-					// }
-
 					// Remove the values_link_json and values_link_xml fields since we've fetched the data
-					// content_item.as_object_mut().unwrap().remove("values_link_json");
-					// content_item.as_object_mut().unwrap().remove("values_link_xml");
+					content_item
+						.as_object_mut()
+						.unwrap()
+						.remove("values_link_json");
+					content_item
+						.as_object_mut()
+						.unwrap()
+						.remove("values_link_xml");
 				}
 			}
 
 			// Process children array if it exists
 			if let Some(children_array) = field.get_mut("children").and_then(|c| c.as_array_mut()) {
 				for child in children_array.iter_mut() {
+					// Extract the tag value before mutable borrows to avoid borrowing conflicts
+					let tag_value = child
+						.get("tag")
+						.and_then(|t| t.as_str())
+						.map(|s| s.to_string());
+
 					// Process content array of each child
 					if let Some(child_content_array) =
 						child.get_mut("content").and_then(|c| c.as_array_mut())
@@ -566,33 +599,65 @@ pub async fn get_avito_category_fields(
 										.unwrap()
 										.insert("values".to_string(), values_data);
 								}
+							} else if let Some(values_link_xml) = child_content_item
+								.get("values_link_xml")
+								.and_then(|v| v.as_str())
+							{
+								// Check if the values_link_xml contains "Autocatalog.xml"
+								if values_link_xml.contains("Autocatalog.xml") {
+									// Skip database query if the field's tag is one of the specified values
+									let should_skip_db_query = if let Some(ref tag_val) = tag_value
+									{
+										tag_val == "Model"
+											|| tag_val == "Generation" || tag_val == "Modification"
+											|| tag_val == "BodyType" || tag_val == "Doors"
+									} else {
+										false
+									};
+
+									if !should_skip_db_query {
+										// Fetch data from avito_car_marks table
+										match sqlx::query_as::<_, AvitoCarMark>(
+											"SELECT car_mark_id, value FROM avito_car_marks",
+										)
+										.fetch_all(&data.db)
+										.await
+										{
+											Ok(car_marks) => {
+												// Convert car marks to the expected JSON format
+												let values_data = serde_json::to_value(&car_marks)
+													.map_err(|e| {
+														ApiError::JsonParseError(e, format!("Failed to serialize car marks: {:?}", car_marks))
+													})?;
+
+												// Add the fetched values to the content item as a new "values" field
+												child_content_item.as_object_mut().unwrap().insert(
+													"values".to_string(),
+													values_data.clone(),
+												); // Clone to avoid move
+											}
+											Err(e) => {
+												// If database query fails (e.g., table doesn't exist),
+												// fall back to original behavior of making HTTP request
+												// This preserves functionality when database is not set up
+											}
+										}
+									}
+								} else {
+									// For other XML links, make HTTP request as before (if needed)
+									// This preserves the original behavior for non-Autocatalog.xml links
+								}
 							}
 
-							// Process values_link_xml in children
-							// if let Some(values_link_xml) = child_content_item.get("values_link_xml").and_then(|v| v.as_str()) {
-							// 	// Make additional request to fetch values from the XML link
-							// 	let values_response = Client::builder()
-							// 		.danger_accept_invalid_certs(true)
-							// 		.timeout(std::time::Duration::from_secs(5)) // Add 5 second timeout
-							// 		.build()?
-							// 		.get(values_link_xml)
-							// 		.headers(headers.clone())
-							// 		.send()
-							// 		.await?;
-							//
-							// 	if values_response.status().is_success() {
-							// 		let values_text = values_response.text().await?;
-							// 		// Parse XML response to JSON
-							// 		let values_data = parse_xml_to_json(&values_text)?;
-							//
-							// 		// Add the fetched values to the content item as a new "values" field
-							// 		child_content_item.as_object_mut().unwrap().insert("values".to_string(), values_data);
-							// 	}
-							// }
-
 							// Remove the values_link_json and values_link_xml fields since we've fetched the data
-							// child_content_item.as_object_mut().unwrap().remove("values_link_json");
-							// child_content_item.as_object_mut().unwrap().remove("values_link_xml");
+							child_content_item
+								.as_object_mut()
+								.unwrap()
+								.remove("values_link_json");
+							child_content_item
+								.as_object_mut()
+								.unwrap()
+								.remove("values_link_xml");
 						}
 					}
 				}
