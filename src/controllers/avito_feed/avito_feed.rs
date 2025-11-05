@@ -466,19 +466,14 @@ pub async fn get_avito_feeds(
 
 	for row in &rows {
 		// Extract feed information
-		let feed_id: Uuid = row
-			.try_get("feed_id")
-			.map_err(|e| ApiError::InternalServerError(format!("Failed to get feed_id: {}", e)))?;
-		let account_id: Uuid = row.try_get("account_id").map_err(|e| {
-			ApiError::InternalServerError(format!("Failed to get account_id: {}", e))
-		})?;
+		let feed_id: Uuid = row.try_get("feed_id").unwrap_or_else(|_| Uuid::nil());
+		let account_id: Uuid = row.try_get("account_id").unwrap_or_else(|_| Uuid::nil());
 		let category: String = row
 			.try_get("category")
-			.map_err(|e| ApiError::InternalServerError(format!("Failed to get category: {}", e)))?;
-		let feed_created_ts: chrono::DateTime<chrono::Utc> =
-			row.try_get("feed_created_ts").map_err(|e| {
-				ApiError::InternalServerError(format!("Failed to get feed_created_ts: {}", e))
-			})?;
+			.unwrap_or_else(|_| "unknown".to_string());
+		let feed_created_ts: chrono::DateTime<chrono::Utc> = row
+			.try_get("feed_created_ts")
+			.unwrap_or_else(|_| chrono::Utc::now());
 
 		// Create or get feed
 		feeds.entry(feed_id).or_insert_with(|| FeedResponse {
@@ -491,22 +486,15 @@ pub async fn get_avito_feeds(
 
 		// Handle ad level (might be NULL due to LEFT JOIN)
 		if let Ok(ad_id) = row.try_get::<Uuid, _>("ad_id") {
-			let avito_ad_id: String = row.try_get("avito_ad_id").map_err(|e| {
-				ApiError::InternalServerError(format!("Failed to get avito_ad_id: {}", e))
-			})?;
-			let parsed_id: String = row.try_get("parsed_id").map_err(|e| {
-				ApiError::InternalServerError(format!("Failed to get parsed_id: {}", e))
-			})?;
-			let is_active: bool = row.try_get("is_active").map_err(|e| {
-				ApiError::InternalServerError(format!("Failed to get is_active: {}", e))
-			})?;
-			let status: String = row.try_get("status").map_err(|e| {
-				ApiError::InternalServerError(format!("Failed to get status: {}", e))
-			})?;
-			let ad_created_ts: chrono::DateTime<chrono::Utc> =
-				row.try_get("ad_created_ts").map_err(|e| {
-					ApiError::InternalServerError(format!("Failed to get ad_created_ts: {}", e))
-				})?;
+			let avito_ad_id: String = row.try_get("avito_ad_id").unwrap_or_else(|_| String::new());
+			let parsed_id: String = row.try_get("parsed_id").unwrap_or_else(|_| String::new());
+			let is_active: bool = row.try_get("is_active").unwrap_or_else(|_| true);
+			let status: String = row
+				.try_get("status")
+				.unwrap_or_else(|_| "unknown".to_string());
+			let ad_created_ts: chrono::DateTime<chrono::Utc> = row
+				.try_get("ad_created_ts")
+				.unwrap_or_else(|_| chrono::Utc::now());
 
 			// Create or get ad
 			ads.entry(ad_id).or_insert_with(|| AdResponse {
@@ -521,22 +509,16 @@ pub async fn get_avito_feeds(
 
 			// Handle field level (might be NULL due to LEFT JOIN)
 			if let Ok(field_id) = row.try_get::<Uuid, _>("field_id") {
-				let tag: String = row.try_get("tag").map_err(|e| {
-					ApiError::InternalServerError(format!("Failed to get tag: {}", e))
-				})?;
-				let data_type: String = row.try_get("data_type").map_err(|e| {
-					ApiError::InternalServerError(format!("Failed to get data_type: {}", e))
-				})?;
-				let field_type: String = row.try_get("field_type").map_err(|e| {
-					ApiError::InternalServerError(format!("Failed to get field_type: {}", e))
-				})?;
-				let field_created_ts: chrono::DateTime<chrono::Utc> =
-					row.try_get("field_created_ts").map_err(|e| {
-						ApiError::InternalServerError(format!(
-							"Failed to get field_created_ts: {}",
-							e
-						))
-					})?;
+				let tag: String = row.try_get("tag").unwrap_or_else(|_| String::new());
+				let data_type: String = row
+					.try_get("data_type")
+					.unwrap_or_else(|_| "string".to_string());
+				let field_type: String = row
+					.try_get("field_type")
+					.unwrap_or_else(|_| "attribute".to_string());
+				let field_created_ts: chrono::DateTime<chrono::Utc> = row
+					.try_get("field_created_ts")
+					.unwrap_or_else(|_| chrono::Utc::now());
 
 				// Create or get field
 				fields.entry(field_id).or_insert_with(|| FieldResponse {
@@ -550,16 +532,10 @@ pub async fn get_avito_feeds(
 
 				// Handle field value level (might be NULL due to LEFT JOIN)
 				if let Ok(field_value_id) = row.try_get::<Uuid, _>("field_value_id") {
-					let value: String = row.try_get("value").map_err(|e| {
-						ApiError::InternalServerError(format!("Failed to get value: {}", e))
-					})?;
-					let value_created_ts: chrono::DateTime<chrono::Utc> =
-						row.try_get("value_created_ts").map_err(|e| {
-							ApiError::InternalServerError(format!(
-								"Failed to get value_created_ts: {}",
-								e
-							))
-						})?;
+					let value: String = row.try_get("value").unwrap_or_else(|_| String::new());
+					let value_created_ts: chrono::DateTime<chrono::Utc> = row
+						.try_get("value_created_ts")
+						.unwrap_or_else(|_| chrono::Utc::now());
 
 					// Add field value to field
 					if let Some(field) = fields.get_mut(&field_id) {
@@ -617,9 +593,9 @@ pub async fn get_avito_feeds(
 	}
 
 	Ok(HttpResponse::Ok().json(serde_json::json!({
-		"status": "success",
+	"status": "success",
 		"data": feeds_vec,
-		"pagination": {
+	"pagination": {
 			"page": page,
 			"limit": limit,
 			"total": total_feeds,
@@ -640,9 +616,9 @@ pub async fn get_last_avito_feed(
 
 	// First, get the most recent feed
 	let latest_feed_row = sqlx::query!(
-		r#"SELECT feed_id, account_id, category, created_ts 
-		   FROM avito_feeds 
-		   ORDER BY created_ts DESC 
+		r#"SELECT feed_id, account_id, category, created_ts
+		   FROM avito_feeds
+		   ORDER BY created_ts DESC
 		   LIMIT 1"#
 	)
 	.fetch_optional(&data.db)
@@ -746,22 +722,15 @@ pub async fn get_last_avito_feed(
 	for row in &rows {
 		// Handle ad level (might be NULL due to LEFT JOIN)
 		if let Ok(ad_id) = row.try_get::<Uuid, _>("ad_id") {
-			let avito_ad_id: String = row.try_get("avito_ad_id").map_err(|e| {
-				ApiError::InternalServerError(format!("Failed to get avito_ad_id: {}", e))
-			})?;
-			let parsed_id: String = row.try_get("parsed_id").map_err(|e| {
-				ApiError::InternalServerError(format!("Failed to get parsed_id: {}", e))
-			})?;
-			let is_active: bool = row.try_get("is_active").map_err(|e| {
-				ApiError::InternalServerError(format!("Failed to get is_active: {}", e))
-			})?;
-			let status: String = row.try_get("status").map_err(|e| {
-				ApiError::InternalServerError(format!("Failed to get status: {}", e))
-			})?;
-			let ad_created_ts: chrono::DateTime<chrono::Utc> =
-				row.try_get("ad_created_ts").map_err(|e| {
-					ApiError::InternalServerError(format!("Failed to get ad_created_ts: {}", e))
-				})?;
+			let avito_ad_id: String = row.try_get("avito_ad_id").unwrap_or_else(|_| String::new());
+			let parsed_id: String = row.try_get("parsed_id").unwrap_or_else(|_| String::new());
+			let is_active: bool = row.try_get("is_active").unwrap_or_else(|_| true);
+			let status: String = row
+				.try_get("status")
+				.unwrap_or_else(|_| "unknown".to_string());
+			let ad_created_ts: chrono::DateTime<chrono::Utc> = row
+				.try_get("ad_created_ts")
+				.unwrap_or_else(|_| chrono::Utc::now());
 
 			// Create or get ad
 			ads.entry(ad_id).or_insert_with(|| AdResponse {
@@ -776,22 +745,16 @@ pub async fn get_last_avito_feed(
 
 			// Handle field level (might be NULL due to LEFT JOIN)
 			if let Ok(field_id) = row.try_get::<Uuid, _>("field_id") {
-				let tag: String = row.try_get("tag").map_err(|e| {
-					ApiError::InternalServerError(format!("Failed to get tag: {}", e))
-				})?;
-				let data_type: String = row.try_get("data_type").map_err(|e| {
-					ApiError::InternalServerError(format!("Failed to get data_type: {}", e))
-				})?;
-				let field_type: String = row.try_get("field_type").map_err(|e| {
-					ApiError::InternalServerError(format!("Failed to get field_type: {}", e))
-				})?;
-				let field_created_ts: chrono::DateTime<chrono::Utc> =
-					row.try_get("field_created_ts").map_err(|e| {
-						ApiError::InternalServerError(format!(
-							"Failed to get field_created_ts: {}",
-							e
-						))
-					})?;
+				let tag: String = row.try_get("tag").unwrap_or_else(|_| String::new());
+				let data_type: String = row
+					.try_get("data_type")
+					.unwrap_or_else(|_| "string".to_string());
+				let field_type: String = row
+					.try_get("field_type")
+					.unwrap_or_else(|_| "attribute".to_string());
+				let field_created_ts: chrono::DateTime<chrono::Utc> = row
+					.try_get("field_created_ts")
+					.unwrap_or_else(|_| chrono::Utc::now());
 
 				// Create or get field
 				fields.entry(field_id).or_insert_with(|| FieldResponse {
@@ -805,16 +768,10 @@ pub async fn get_last_avito_feed(
 
 				// Handle field value level (might be NULL due to LEFT JOIN)
 				if let Ok(field_value_id) = row.try_get::<Uuid, _>("field_value_id") {
-					let value: String = row.try_get("value").map_err(|e| {
-						ApiError::InternalServerError(format!("Failed to get value: {}", e))
-					})?;
-					let value_created_ts: chrono::DateTime<chrono::Utc> =
-						row.try_get("value_created_ts").map_err(|e| {
-							ApiError::InternalServerError(format!(
-								"Failed to get value_created_ts: {}",
-								e
-							))
-						})?;
+					let value: String = row.try_get("value").unwrap_or_else(|_| String::new());
+					let value_created_ts: chrono::DateTime<chrono::Utc> = row
+						.try_get("value_created_ts")
+						.unwrap_or_else(|_| chrono::Utc::now());
 
 					// Add field value to field
 					if let Some(field) = fields.get_mut(&field_id) {
@@ -854,17 +811,22 @@ pub async fn get_last_avito_feed(
 		ad.fields.sort_by(|a, b| a.created_ts.cmp(&b.created_ts));
 	}
 
+	// Capture the length before moving ads_vec
+	let ads_count = ads_vec.len();
+
 	// Create the FeedResponse with the latest feed data and paginated ads
 	let feed_response = FeedResponse {
 		feed_id: latest_feed.feed_id,
 		account_id: latest_feed.account_id,
-		category: latest_feed.category.expect("No category"),
-		created_ts: latest_feed.created_ts.expect("No created_ts"),
+		category: latest_feed
+			.category
+			.unwrap_or_else(|| "Unknown".to_string()),
+		created_ts: latest_feed.created_ts.unwrap_or_else(|| chrono::Utc::now()),
 		ads: ads_vec,
 	};
 
 	Ok(HttpResponse::Ok().json(serde_json::json!({
-		"status": "success",
+	"status": "success",
 		"data": feed_response,
 		"pagination": {
 			"page": page,

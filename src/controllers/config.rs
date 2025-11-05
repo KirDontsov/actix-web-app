@@ -103,6 +103,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_avito_balance)
 		.service(update_avito_price)
 		.service(import_avito_xml)
+		.service(avito_create_ad)
 		.service(get_avito_categories_tree)
 		.service(get_avito_category_fields)
 		.service(get_avito_feeds)
