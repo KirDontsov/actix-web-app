@@ -18,7 +18,7 @@ pub struct FeedQueryParams {
 }
 
 // Response structures
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct FeedResponse {
 	pub feed_id: Uuid,
 	pub account_id: Uuid,
@@ -27,7 +27,7 @@ pub struct FeedResponse {
 	pub ads: Vec<AdResponse>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct AdResponse {
 	pub ad_id: Uuid,
 	pub avito_ad_id: String,
@@ -38,7 +38,7 @@ pub struct AdResponse {
 	pub fields: Vec<FieldResponse>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct FieldResponse {
 	pub field_id: Uuid,
 	pub tag: String,
@@ -48,7 +48,7 @@ pub struct FieldResponse {
 	pub values: Vec<FieldValueResponse>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct FieldValueResponse {
 	pub field_value_id: Uuid,
 	pub value: String,
@@ -61,19 +61,4 @@ pub struct FeedJoinRow {
 	pub feed_id: Uuid,
 	pub account_id: Uuid,
 	pub category: String,
-	pub feed_created_ts: chrono::DateTime<chrono::Utc>,
-	pub ad_id: Option<Uuid>,
-	pub avito_ad_id: Option<String>,
-	pub parsed_id: Option<String>,
-	pub is_active: Option<bool>,
-	pub status: Option<String>,
-	pub ad_created_ts: Option<chrono::DateTime<chrono::Utc>>,
-	pub field_id: Option<Uuid>,
-	pub tag: Option<String>,
-	pub data_type: Option<String>,
-	pub field_type: Option<String>,
-	pub field_created_ts: Option<chrono::DateTime<chrono::Utc>>,
-	pub field_value_id: Option<Uuid>,
-	pub value: Option<String>,
-	pub value_created_ts: Option<chrono::DateTime<chrono::Utc>>,
 }

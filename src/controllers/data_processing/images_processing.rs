@@ -2,11 +2,10 @@ use crate::AppState;
 use actix_web::{get, web, HttpResponse, Responder};
 use photon_rs::colour_spaces::darken_hsl;
 use photon_rs::conv::box_blur;
-use photon_rs::multiple::{blend, watermark};
+use photon_rs::multiple::watermark;
 use photon_rs::native::{open_image, save_image};
 use photon_rs::transform::crop;
 use photon_rs::PhotonImage;
-use tokio::time::{sleep, Duration};
 
 use glob::glob;
 
@@ -31,7 +30,7 @@ async fn images_processing_handler(
 	HttpResponse::Ok().json(json_response)
 }
 
-async fn processing(data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
+async fn processing(_data: web::Data<AppState>) -> Result<(), Box<dyn std::error::Error>> {
 	// в цикле берем каждое фото
 	// обрабатываем
 	// и сохраняем обратно с тем же именем

@@ -19,27 +19,6 @@ impl Count {
 		Ok(result)
 	}
 
-	pub async fn count_firms_by_category(
-		db: &Pool<Postgres>,
-		table_name: String,
-		category_id: Uuid,
-	) -> Result<i64, CustomError> {
-		let sql = format!(
-			"SELECT count(*) AS count FROM {} WHERE category_id = '{}'",
-			&table_name, &category_id
-		);
-		let count_query_result = sqlx::query_as::<_, Count>(&sql).fetch_one(db).await;
-
-		if count_query_result.is_err() {
-			println!("Что-то пошло не так во время запроса count {}", &table_name);
-		}
-
-		let result = count_query_result.unwrap().count.unwrap();
-
-		println!("Count result: {:?}", &result);
-
-		Ok(result)
-	}
 
 	pub async fn count_firms_by_city_category(
 		db: &Pool<Postgres>,

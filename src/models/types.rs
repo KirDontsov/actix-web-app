@@ -1,10 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
-pub struct TypesCount {
-	pub count: Option<i64>,
-}
-
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, sqlx::FromRow, Serialize, Clone)]
 pub struct Type {
@@ -27,3 +22,4 @@ pub struct FilteredType {
 	pub name: Option<String>,
 	pub abbreviation: Option<String>,
 }
+

@@ -15,12 +15,12 @@ use crate::utils::filter_oai_description_record;
 #[get("/oai_description_by_firm/{id}")]
 async fn get_oai_description_by_firm_handler(
 	path: Path<Uuid>,
-	opts: web::Query<FilterOptions>,
+	_opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	let firm_id = &path.into_inner();
-	let table = String::from("oai_descriptions");
+	let _table = String::from("oai_descriptions");
 
 	let query_result = sqlx::query_as!(
 		OAIDescription,

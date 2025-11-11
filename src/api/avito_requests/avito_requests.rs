@@ -27,22 +27,4 @@ impl AvitoRequest {
 		Ok(avito_requests_query_result.unwrap_or(Vec::new()))
 	}
 
-	pub async fn get_all_avito_requests_by_user(
-		db: &Pool<Postgres>,
-		user_id: &Uuid,
-	) -> Result<Vec<Self>, CustomError> {
-		let avito_requests_query_result = sqlx::query_as!(
-			AvitoRequest,
-			"SELECT * FROM avito_requests WHERE user_id = $1 ORDER by created_ts",
-			&user_id
-		)
-		.fetch_all(db)
-		.await;
-
-		if avito_requests_query_result.is_err() {
-			println!("Что-то пошло не так во время запроса get_all_avito_requests_by_user");
-		}
-
-		Ok(avito_requests_query_result.unwrap_or(Vec::new()))
-	}
 }

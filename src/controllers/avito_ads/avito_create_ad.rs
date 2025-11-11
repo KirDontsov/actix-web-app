@@ -5,7 +5,6 @@ use actix_web::{
 	HttpResponse,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{Postgres, Transaction};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -14,66 +13,6 @@ pub struct CreateAdRequest {
 	pub fields: HashMap<String, serde_json::Value>,
 	pub account_id: Option<Uuid>,
 }
-
-/*
-Example JSON structure that the client should send:
-
-{
-  "account_id": "2acc3808-15f1-4abb-b15e-c7f4780a87da",
-  "fields": {
-	"AdStatus": "Free",
-	"AdType": "Товар приобретен на продажу",
-	"Address": "Leningradskaya, 3, 227",
-	"Addresses": "",
-	"Availability": "В наличии",
-	"AvitoId": "",
-	"Brand": "",
-	"CallsDevices": "",
-	"Category": "Запчасти и аксессуары",
-	"CompatibleCars": "123123",
-	"Condition": "Новое",
-	"ContactMethod": "По телефону и в сообщениях",
-	"ContactPhone": "89112395458",
-	"DateBegin": "",
-	"DateEnd": "",
-	"Delivery": [],
-	"DeliveryAddresses": "",
-	"DeliverySubsidy": "",
-	"Description": "processing",
-	"GoodsType": "Запчасти",
-	"HeightForDelivery": 0,
-	"Id": "",
-	"ImageNames": "",
-	"ImageUrls": "",
-	"Images": "",
-	"InternetCalls": "Да",
-	"Latitude": "",
-	"LengthForDelivery": 0,
-	"ListingFee": "Package",
-	"Longitude": "",
-	"Make": "Abarth",
-	"ManagerName": "Kirill Dontsov",
-	"OEM": "",
-	"OriginalOEM": "",
-	"OriginalVendor": "",
-	"Originality": "Оригинал",
-	"Price": "",
-	"ProductType": "Для автомобилей",
-	"Promo": "Manual",
-	"PromoAutoOptions": "",
-	"PromoManualOptions": "",
-	"ReturnPolicy": "По любой причине — 15 минут",
-	"SellerAddressID": "",
-	"SparePartType": "Автосвет",
-	"TargetAudience": "Частные лица",
-	"Title": "еуые",
-	"VideoFileURL": "",
-	"VideoURL": "",
-	"WeightForDelivery": 0,
-	"WidthForDelivery": 0
-  }
-}
-*/
 
 #[derive(Debug, Serialize)]
 pub struct CreateAdResponse {
@@ -98,22 +37,46 @@ pub async fn avito_create_ad(
 		ApiError::InternalServerError(format!("Failed to start transaction: {}", e))
 	})?;
 
-	// Create a feed entry for this ad creation (if needed)
-	let feed_id = Uuid::new_v4();
-	println!("Creating feed with ID: {}", feed_id);
-	sqlx::query!(
+	// Check if a feed with category "MANUAL_CREATE" already exists for this account
+	let existing_feed = sqlx::query!(
 		r#"
-        INSERT INTO avito_feeds (feed_id, account_id, category)
-        VALUES ($1, $2, $3)
-        "#,
-		feed_id,
+	       SELECT feed_id
+	       FROM avito_feeds
+	       WHERE account_id = $1 AND category = $2
+	       LIMIT 1
+	       "#,
 		account_id,
 		"MANUAL_CREATE"
 	)
-	.execute(&mut *tx)
+	.fetch_optional(&mut *tx)
 	.await
-	.map_err(|e| ApiError::InternalServerError(format!("Failed to create feed: {}", e)))?;
-	println!("Feed created successfully with ID: {}", feed_id);
+	.map_err(|e| {
+		ApiError::InternalServerError(format!("Failed to check for existing feed: {}", e))
+	})?;
+
+	let feed_id = if let Some(feed) = existing_feed {
+		// Use existing feed
+		println!("Using existing feed with ID: {}", feed.feed_id);
+		feed.feed_id
+	} else {
+		// Create a new feed
+		let new_feed_id = Uuid::new_v4();
+		println!("Creating new feed with ID: {}", new_feed_id);
+		sqlx::query!(
+			r#"
+	           INSERT INTO avito_feeds (feed_id, account_id, category)
+	           VALUES ($1, $2, $3)
+	           "#,
+			new_feed_id,
+			account_id,
+			"MANUAL_CREATE"
+		)
+		.execute(&mut *tx)
+		.await
+		.map_err(|e| ApiError::InternalServerError(format!("Failed to create feed: {}", e)))?;
+		println!("Feed created successfully with ID: {}", new_feed_id);
+		new_feed_id
+	};
 
 	// Insert the ad record
 	println!("Creating ad with ID: {} for feed ID: {}", ad_id, feed_id);

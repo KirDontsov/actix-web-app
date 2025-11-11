@@ -1,8 +1,5 @@
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::types::TsVector;
-use sqlx::{decode::Decode, postgres::PgValueRef, types::Type, Postgres};
-use std::error::Error;
 use uuid::Uuid;
 
 #[allow(non_snake_case)]

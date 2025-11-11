@@ -99,10 +99,6 @@ impl WebSocketConnections {
 	}
 }
 
-// Function to broadcast messages to all WebSocket connections
-pub async fn broadcast_to_websockets(connections: &WebSocketConnections, message: &str) {
-	connections.broadcast_message(message).await;
-}
 
 // WebSocket handler function
 pub async fn websocket_handler(

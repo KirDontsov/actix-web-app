@@ -17,20 +17,13 @@ async fn firms_prices_crawler_handler(
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	loop {
-		let mut needs_to_restart = true;
-		if needs_to_restart {
-			let _: Result<(), Box<dyn std::error::Error>> = match crawler(data.clone()).await {
-				Ok(x) => {
-					needs_to_restart = false;
-					Ok(x)
-				}
-				Err(e) => {
-					println!("{:?}", e);
-					needs_to_restart = true;
-					Err(Box::new(e))
-				}
-			};
-		}
+		let _: Result<(), Box<dyn std::error::Error>> = match crawler(data.clone()).await {
+			Ok(x) => Ok(x),
+			Err(e) => {
+				println!("{:?}", e);
+				Err(Box::new(e))
+			}
+	};
 	}
 	let json_response = serde_json::json!({
 		"status":  "success",
@@ -55,7 +48,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	.unwrap();
 	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
-	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
+	let _rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
 	let firms_count =
 		Count::count_firms_by_city_category(&data.db, table.clone(), city_id, category_id)

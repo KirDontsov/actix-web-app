@@ -50,15 +50,8 @@ async fn main() -> std::io::Result<()> {
 	};
 
 	// Connect to RabbitMQ
-	let addr = format!(
-		"amqp://{}:{}@{}:{}",
-		config.rabbitmq_username,
-		config.rabbitmq_password,
-		config.rabbitmq_host,
-		config.rabbitmq_port
-	);
 	let conn =
-		match lapin::Connection::connect(addr.as_str(), lapin::ConnectionProperties::default())
+		match lapin::Connection::connect(&config.rabbitmq_url, lapin::ConnectionProperties::default())
 			.await
 		{
 			Ok(pool) => {

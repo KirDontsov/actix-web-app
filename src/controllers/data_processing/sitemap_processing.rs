@@ -5,7 +5,6 @@ use std::io::stdout;
 
 use crate::{
 	models::{Category, City, Count, Firm},
-	utils::Translit,
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};

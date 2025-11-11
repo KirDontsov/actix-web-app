@@ -1,8 +1,6 @@
 use crate::{
 	api::Driver,
-	jwt_auth,
-	models::{Count, Firm, Image},
-	utils::{get_counter, update_counter},
+	models::{Firm, Image},
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
@@ -34,14 +32,14 @@ async fn exact_firm_images_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	// let counter_id: String = String::from("2a94ecc5-fb8d-4b4d-bb03-e3ee2eb708da");
-	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str(
+	let _table = String::from("firms");
+	let _city_id = uuid::Uuid::parse_str(
 		env::var("CRAWLER_CITY_ID")
 			.expect("CRAWLER_CITY_ID not set")
 			.as_str(),
 	)
 	.unwrap();
-	let category_id = uuid::Uuid::parse_str(
+	let _category_id = uuid::Uuid::parse_str(
 		env::var("CRAWLER_CATEGORY_ID")
 			.expect("CRAWLER_CATEGORY_ID not set")
 			.as_str(),
@@ -49,7 +47,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	.unwrap();
 	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
-	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
+	let _rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
 	let url = env::var("CRAWLER_EXACT_FIRM_URL").expect("CRAWLER_EXACT_FIRM_URL not set");
 
@@ -66,7 +64,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	println!("DELETE {:?}", existed_images);
 
 	if existed_images.is_ok() {
-		let delete = sqlx::query_as!(
+		let _delete = sqlx::query_as!(
 			Image,
 			"DELETE FROM images WHERE firm_id = $1",
 			firm.firm_id.clone(),

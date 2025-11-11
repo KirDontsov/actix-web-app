@@ -2,9 +2,11 @@ use crate::AppState;
 use actix_web::{web, HttpRequest};
 
 use crate::controllers::auth::*;
+use crate::controllers::avito_accounts::*;
 use crate::controllers::avito_ads::*;
 use crate::controllers::avito_client::*;
-use crate::controllers::avito_feed::*;
+use crate::controllers::avito_editor::*;
+use crate::controllers::avito_feeds::*;
 use crate::controllers::avito_requests::*;
 use crate::controllers::categories::*;
 use crate::controllers::cities::*;
@@ -107,11 +109,16 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		.service(get_avito_categories_tree)
 		.service(get_avito_category_fields)
 		.service(get_avito_feeds)
-		.service(get_last_avito_feed)
+		.service(get_avito_feed_by_id)
 		.service(fetch_and_update_avito_ads)
 		.service(create_avito_request_handler)
 		.service(get_ads_by_avito_request_id_handler)
 		.service(get_ads_by_avito_request_id_csv_handler)
+		.service(get_avito_accounts_handler)
+		.service(get_avito_account_by_id_handler)
+		.service(create_avito_account_handler)
+		.service(update_avito_account_handler)
+		.service(delete_avito_account_handler)
 		.route(
 			"/ws",
 			web::get().to(

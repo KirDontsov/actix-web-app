@@ -1,14 +1,10 @@
 use crate::{
 	api::Driver,
-	jwt_auth,
-	models::{Count, Firm, UpdateFirmRating},
-	utils::{get_counter, update_counter},
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 use csv::Writer;
-use std::env;
 use thirtyfour::prelude::*;
 use tokio::time::{sleep, Duration};
 
@@ -32,7 +28,7 @@ async fn avito_crawler_handler(
 	HttpResponse::Ok().json(json_response)
 }
 
-async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
+async fn crawler(_data: web::Data<AppState>) -> WebDriverResult<()> {
 	let search_query = "ремонт фар";
 	let region_query = "Санкт-Петербург";
 

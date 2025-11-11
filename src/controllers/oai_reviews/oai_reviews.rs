@@ -42,7 +42,7 @@ async fn get_oai_review_handler(
 #[get("/oai_reviews_by_url/{id}")]
 async fn get_oai_reviews_by_url_handler(
 	path: Path<String>,
-	opts: web::Query<FilterOptions>,
+	_opts: web::Query<FilterOptions>,
 	data: web::Data<AppState>,
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {

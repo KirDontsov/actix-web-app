@@ -20,13 +20,13 @@ async fn firms_crawler_handler(
 
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let driver = <dyn Driver>::get_driver().await?;
-	let city_id = uuid::Uuid::parse_str(
+	let _city_id = uuid::Uuid::parse_str(
 		env::var("CRAWLER_CITY_ID")
 			.expect("CRAWLER_CITY_ID not set")
 			.as_str(),
 	)
 	.unwrap();
-	let category_id = uuid::Uuid::parse_str(
+	let _category_id = uuid::Uuid::parse_str(
 		env::var("CRAWLER_CATEGORY_ID")
 			.expect("CRAWLER_CATEGORY_ID not set")
 			.as_str(),

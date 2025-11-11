@@ -37,6 +37,10 @@ quick-xml = { version = "0.38.3", features = ["serialize"] }
 lapin = "3.7.0"
 futures = "0.3.31"
 url = "2.5.0"
+aes = "0.8"
+cbc = "0.1"
+hex = "0.4"
+cipher = "0.4"
 
 [dev-dependencies]
 time = "0.3.44"

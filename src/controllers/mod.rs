@@ -1,7 +1,9 @@
 pub mod auth;
+pub mod avito_accounts;
 pub mod avito_ads;
 pub mod avito_client;
-pub mod avito_feed;
+pub mod avito_editor;
+pub mod avito_feeds;
 pub mod avito_requests;
 pub mod categories;
 pub mod cities;
@@ -23,5 +25,4 @@ pub mod types;
 pub mod user;
 pub mod websocket;
 
-pub use self::avito_requests::*;
 pub use self::config::config;

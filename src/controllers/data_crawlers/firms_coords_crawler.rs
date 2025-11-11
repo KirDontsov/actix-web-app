@@ -1,8 +1,7 @@
 use crate::{
 	api::Driver,
-	jwt_auth,
 	models::{Count, Firm, UpdateFirmCoords},
-	utils::{get_counter, update_counter},
+	utils::get_counter,
 	AppState,
 };
 use actix_web::{get, web, HttpResponse, Responder};
@@ -17,20 +16,13 @@ async fn firms_coords_crawler_handler(
 	// _: jwt_auth::JwtMiddleware,
 ) -> impl Responder {
 	loop {
-		let mut needs_to_restart = true;
-		if needs_to_restart {
-			let _: Result<(), Box<dyn std::error::Error>> = match crawler(data.clone()).await {
-				Ok(x) => {
-					needs_to_restart = false;
-					Ok(x)
-				}
-				Err(e) => {
-					println!("{:?}", e);
-					needs_to_restart = true;
-					Err(Box::new(e))
-				}
-			};
-		}
+		let _: Result<(), Box<dyn std::error::Error>> = match crawler(data.clone()).await {
+			Ok(x) => Ok(x),
+			Err(e) => {
+				println!("{:?}", e);
+				Err(Box::new(e))
+			}
+	};
 	}
 	let json_response = serde_json::json!({
 		"status":  "success",
@@ -41,13 +33,13 @@ async fn firms_coords_crawler_handler(
 async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	let counter_id: String = String::from("ab887681-f062-40f0-88e2-421de924d573");
 	let table = String::from("firms");
-	let city_id = uuid::Uuid::parse_str(
+	let _city_id = uuid::Uuid::parse_str(
 		env::var("CRAWLER_CITY_ID")
 			.expect("CRAWLER_CITY_ID not set")
 			.as_str(),
 	)
 	.unwrap();
-	let category_id = uuid::Uuid::parse_str(
+	let _category_id = uuid::Uuid::parse_str(
 		env::var("CRAWLER_CATEGORY_ID")
 			.expect("CRAWLER_CATEGORY_ID not set")
 			.as_str(),
@@ -55,7 +47,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	.unwrap();
 	let city_name = env::var("CRAWLER_CITY_NAME").expect("CRAWLER_CITY_NAME not set");
 	let category_name = env::var("CRAWLER_CATEGOTY_NAME").expect("CRAWLER_CATEGOTY_NAME not set");
-	let rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
+	let _rubric_id = env::var("CRAWLER_RUBRIC_ID").expect("CRAWLER_RUBRIC_ID not set");
 
 	let empty_field = "coords".to_string();
 
@@ -159,37 +151,7 @@ async fn crawler(data: web::Data<AppState>) -> WebDriverResult<()> {
 	Ok(())
 }
 
-pub async fn find_block(elem: WebElement, xpath: String) -> String {
-	let block_arr = match elem.find_all(By::ClassName(&xpath)).await {
-		Ok(block_elem) => block_elem,
-		Err(e) => {
-			println!("error while searching block: {}", e);
-			Vec::<WebElement>::new()
-		}
-	};
 
-	let res = match block_arr.get(0).unwrap_or(&elem).text().await {
-		Ok(block_elem) => block_elem,
-		Err(e) => {
-			println!("error while extracting text: {}", e);
-			"".to_string()
-		}
-	};
-
-	res
-}
-
-pub async fn find_address_blocks(
-	driver: WebDriver,
-	xpath: String,
-) -> Result<Vec<WebElement>, WebDriverError> {
-	let block = driver
-		.query(By::XPath(&xpath))
-		.all_from_selector_required()
-		.await?;
-
-	Ok(block)
-}
 
 pub async fn find_error_block(driver: WebDriver) -> Result<String, WebDriverError> {
 	let err_block = driver
