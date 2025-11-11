@@ -32,6 +32,8 @@ pub async fn avito_create_ad(
 		Uuid::parse_str("2acc3808-15f1-4abb-b15e-c7f4780a87da").unwrap()
 	});
 
+	dbg!(&account_id);
+
 	// Start transaction
 	let mut tx = data.db.begin().await.map_err(|e| {
 		ApiError::InternalServerError(format!("Failed to start transaction: {}", e))
@@ -43,6 +45,7 @@ pub async fn avito_create_ad(
 	       SELECT feed_id
 	       FROM avito_feeds
 	       WHERE account_id = $1 AND category = $2
+	       ORDER BY created_ts DESC
 	       LIMIT 1
 	       "#,
 		account_id,
