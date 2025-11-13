@@ -1,4 +1,5 @@
 use crate::{
+	jwt_auth::JwtMiddleware,
 	models::{ApiError, XmlAd},
 	AppState,
 };
@@ -18,19 +19,20 @@ use sqlx::{Postgres, Transaction};
 use std::collections::HashMap;
 use std::time::Duration;
 
-// Structure for POST request body containing account_id
+// Structure for POST request body containing account_id and xml_url
 #[derive(Deserialize)]
-pub struct AccountIdRequest {
+pub struct ImportAvitoXmlRequest {
     pub account_id: Uuid,
+    pub xml_url: String,
 }
 
 #[post("/avito/import-xml")]
 pub async fn import_avito_xml(
-	body: web::Json<AccountIdRequest>,
+	body: web::Json<ImportAvitoXmlRequest>,
 	data: web::Data<AppState>,
-	// _: JwtMiddleware,
+	_: JwtMiddleware,
 ) -> Result<HttpResponse, ApiError> {
-	let xml_url = "https://remzapchasti.ru/upload/avito_new_2.xml";
+	let xml_url = &body.xml_url;
 	let account_id = if Some(body.account_id).is_some() { body.account_id } else { Uuid::parse_str("2acc3808-15f1-4abb-b15e-c7f4780a87da").unwrap() };
 
 	// Fetch XML data
