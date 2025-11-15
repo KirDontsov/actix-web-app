@@ -65,7 +65,7 @@ async fn login_handler(
 		.path("/")
 		.max_age(ActixWebDuration::new(60 * 60, 0))
 		.http_only(true)
-		.secure(true)
+		.secure(data.env.cookie_secure)
 		.finish();
 
 	HttpResponse::Ok()
