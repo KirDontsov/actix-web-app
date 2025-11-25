@@ -23,7 +23,7 @@ async fn logout_handler(
 		.max_age(ActixWebDuration::new(-1, 0)) // Expire the cookie
 		.http_only(true)
 		.secure(is_secure) // Match the secure setting to properly clear the cookie
-		.same_site(SameSite::None) // Added SameSite for consistency
+		.same_site(SameSite::Lax) // Added SameSite for consistency
 		.finish();
 
 	HttpResponse::Ok()

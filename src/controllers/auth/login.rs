@@ -70,7 +70,7 @@ async fn login_handler(
 		.unwrap_or(false); // Default to false if header is not present
 
 	let cookie = Cookie::build("token", token.to_owned())
-		.same_site(SameSite::None)  // Changed from SameSite::None to SameSite::Lax for Safari compatibility
+		.same_site(SameSite::Lax)  // Changed from SameSite::None to SameSite::Lax for Safari compatibility
 		.path("/")
 		.max_age(ActixWebDuration::new(60 * 60, 0))
 		.http_only(true)
