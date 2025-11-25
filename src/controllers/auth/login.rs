@@ -61,11 +61,11 @@ async fn login_handler(
 	.unwrap();
 
 	let cookie = Cookie::build("token", token.to_owned())
-		.same_site(SameSite::None) // SameSite::Lax for Safari compatibility
+		.same_site(SameSite::Lax)  // Changed from SameSite::None to SameSite::Lax for Safari compatibility
 		.path("/")
 		.max_age(ActixWebDuration::new(60 * 60, 0))
 		.http_only(true)
-		.secure(true)
+		.secure(data.env.secure_cookies)  // Use config-based setting for secure flag
 		.finish();
 
 	HttpResponse::Ok()
