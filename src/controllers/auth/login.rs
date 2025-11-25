@@ -4,7 +4,7 @@ use crate::{
 };
 use actix_web::{
 	cookie::{time::Duration as ActixWebDuration, Cookie, SameSite},
-	post, web, HttpResponse, Responder,
+	post, web, HttpRequest, HttpResponse, Responder,
 };
 use argon2::{
 	password_hash::{PasswordHash, PasswordVerifier},
@@ -16,6 +16,7 @@ use serde_json::json;
 
 #[post("/auth/login")]
 async fn login_handler(
+	req: HttpRequest,
 	body: web::Json<LoginUserSchema>,
 	data: web::Data<AppState>,
 ) -> impl Responder {
@@ -60,12 +61,30 @@ async fn login_handler(
 	)
 	.unwrap();
 
+	// Determine if the request came through HTTPS by checking various headers
+	// This handles cases where the app is behind a proxy/load balancer
+	let is_secure = req.headers().get("x-forwarded-proto")
+		.and_then(|h| h.to_str().ok())
+		.map(|h| h == "https")
+		.unwrap_or_else(|| {
+			// If x-forwarded-proto is not present, check other common headers
+			req.headers().get("x-forwarded-protocol")
+				.and_then(|h| h.to_str().ok())
+				.map(|h| h == "https")
+				.unwrap_or_else(|| {
+					req.headers().get("x-url-scheme")
+						.and_then(|h| h.to_str().ok())
+						.map(|h| h == "https")
+						.unwrap_or_else(|| data.env.secure_cookies) // fallback to config
+				})
+	});
+
 	let cookie = Cookie::build("token", token.to_owned())
 		.same_site(SameSite::Lax)  // Changed from SameSite::None to SameSite::Lax for Safari compatibility
 		.path("/")
 		.max_age(ActixWebDuration::new(60 * 60, 0))
 		.http_only(true)
-		.secure(data.env.secure_cookies)  // Use config-based setting for secure flag
+		.secure(is_secure)  // Use dynamically determined secure flag
 		.finish();
 
 	HttpResponse::Ok()
