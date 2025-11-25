@@ -21,7 +21,6 @@ use crate::controllers::pages::*;
 use crate::controllers::prices::*;
 use crate::controllers::quotes::*;
 use crate::controllers::reviews::*;
-use crate::controllers::routes::*;
 use crate::controllers::types::*;
 use crate::controllers::user::*;
 use crate::controllers::websocket::*;

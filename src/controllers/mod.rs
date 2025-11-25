@@ -20,7 +20,6 @@ pub mod prices;
 pub mod quotes;
 pub mod rabbitmq_consumer;
 pub mod reviews;
-pub mod routes;
 pub mod types;
 pub mod user;
 pub mod websocket;
