@@ -78,6 +78,6 @@ async fn login_handler(
 		.finish();
 
 	HttpResponse::Ok()
-		.cookie(cookie)
+		// .cookie(cookie)
 		.json(json!({"status": "success", "token": token}))
 }
