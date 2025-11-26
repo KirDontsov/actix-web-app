@@ -3,7 +3,6 @@ use crate::{
 	AppState,
 };
 use actix_web::{
-	cookie::{time::Duration as ActixWebDuration, Cookie, SameSite},
 	post, web, HttpRequest, HttpResponse, Responder,
 };
 use argon2::{
@@ -61,23 +60,6 @@ async fn login_handler(
 	)
 	.unwrap();
 
-	// In a proxy setup (nginx), when frontend is on HTTPS but backend is HTTP,
-	// we need to set secure=true for the cookie to be sent from HTTPS frontend
-	// The X-Forwarded-Proto header tells us the original protocol
-	let is_secure = req.headers().get("x-forwarded-proto")
-		.and_then(|h| h.to_str().ok())
-		.map(|h| h == "https")
-		.unwrap_or(false); // Default to false if header is not present
-
-	let cookie = Cookie::build("token", token.to_owned())
-		.same_site(SameSite::Lax)  // Changed from SameSite::None to SameSite::Lax for Safari compatibility
-		.path("/")
-		.max_age(ActixWebDuration::new(60 * 60, 0))
-		.http_only(true)
-		.secure(is_secure) // Set secure based on original protocol
-		.finish();
-
 	HttpResponse::Ok()
-		// .cookie(cookie)
 		.json(json!({"status": "success", "token": token}))
 }

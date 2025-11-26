@@ -99,12 +99,6 @@ async fn main() -> std::io::Result<()> {
 
 	HttpServer::new(move || {
 	let auth = GrantsMiddleware::with_extractor(extract);
-		let cors = Cors::default()
-			.allow_any_origin()
-			.allow_any_method()
-			.allow_any_header()
-			.supports_credentials(); // Enable credentials support for cookies to work with CORS
-
 		App::new()
 			.app_data(web::Data::new(AppState {
 				db: pool.clone(),
@@ -113,7 +107,7 @@ async fn main() -> std::io::Result<()> {
 				websocket_connections: websocket_connections_data.clone(),
 			}))
 			.configure(controllers::config)
-			.wrap(cors)
+			.wrap(Cors::permissive())
 			.wrap(Logger::default())
 			.wrap(auth)
 	})
