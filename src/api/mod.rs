@@ -1,4 +1,3 @@
-pub mod avito_requests;
 pub mod categories;
 pub mod cities;
 pub mod counter;

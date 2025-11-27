@@ -1,16 +1,9 @@
-use crate::AppState;
-use actix_web::{web, HttpRequest};
+use actix_web::{web};
 
 use crate::controllers::auth::*;
-use crate::controllers::avito_accounts::*;
-use crate::controllers::avito_ads::*;
-use crate::controllers::avito_client::*;
-use crate::controllers::avito_editor::*;
-use crate::controllers::avito_feeds::*;
-use crate::controllers::avito_requests::*;
 use crate::controllers::categories::*;
 use crate::controllers::cities::*;
-use crate::controllers::data_crawlers::*;
+// use crate::controllers::data_crawlers::*;
 // use crate::controllers::data_operations::*;
 // use crate::controllers::data_processing::*;
 use crate::controllers::firms::*;
@@ -23,7 +16,6 @@ use crate::controllers::quotes::*;
 use crate::controllers::reviews::*;
 use crate::controllers::types::*;
 use crate::controllers::user::*;
-use crate::controllers::websocket::*;
 
 pub fn config(conf: &mut web::ServiceConfig) {
 	let scope = web::scope("/api")
@@ -91,43 +83,7 @@ pub fn config(conf: &mut web::ServiceConfig) {
 		// pages
 		.service(get_page_by_url_handler)
 		.service(get_pages_handler)
-		.service(get_pages_by_firm_handler)
-		// avito
-		.service(avito_crawler_handler)
-		.service(get_avito_requests_handler)
-		.service(get_all_avito_requests_handler)
-		.service(get_avito_requests_by_user_handler)
-		.service(get_avito_token_handler)
-		.service(get_avito_items)
-		.service(get_avito_user_profile)
-		.service(get_avito_item_analytics)
-		.service(get_avito_balance)
-		.service(update_avito_price)
-		.service(import_avito_xml)
-		.service(avito_create_ad)
-		.service(get_avito_categories_tree)
-		.service(get_avito_category_fields)
-		.service(get_avito_feeds)
-		.service(get_avito_feed_by_id)
-		.service(get_avito_feed_ad)
-		.service(fetch_and_update_avito_ads)
-		.service(create_avito_request_handler)
-		.service(get_ads_by_avito_request_id_handler)
-		.service(get_ads_by_avito_request_id_csv_handler)
-		.service(get_avito_accounts_handler)
-		.service(get_avito_account_by_id_handler)
-		.service(create_avito_account_handler)
-		.service(update_avito_account_handler)
-		.service(delete_avito_account_handler)
-		.route(
-			"/ws",
-			web::get().to(
-				|req: HttpRequest, body: web::Payload, data: web::Data<AppState>| async move {
-					let websocket_connections = data.websocket_connections.clone();
-					websocket_handler(req, body, websocket_connections).await
-				},
-			),
-		);
+		.service(get_pages_by_firm_handler);
 
 	conf.service(scope);
 }
